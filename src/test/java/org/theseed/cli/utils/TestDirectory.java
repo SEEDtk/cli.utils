@@ -1,0 +1,95 @@
+/**
+ *
+ */
+package org.theseed.cli.utils;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.*;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.List;
+
+import org.theseed.io.LineReader;
+
+import junit.framework.TestCase;
+
+/**
+ * @author Bruce Parrello
+ *
+ */
+public class TestDirectory extends TestCase {
+
+    /**
+     * Test directory entries
+     * @throws IOException
+     */
+    public void testDirEntry() throws IOException {
+        try (LineReader reader = new LineReader(new File("data", "dir.tbl"))) {
+            DirEntry entry = DirEntry.create(reader.next());
+            assertThat(entry.getType(), equalTo(DirEntry.Type.HTML));
+            assertThat(entry.getName(), equalTo("G472-T23-30319_assembly_report.html"));
+            entry = DirEntry.create(reader.next());
+            assertThat(entry.getType(), equalTo(DirEntry.Type.CONTIGS));
+            assertThat(entry.getName(), equalTo("G472-T23-30319_contigs.fasta"));
+            entry = DirEntry.create(reader.next());
+            assertThat(entry.getType(), equalTo(DirEntry.Type.FOLDER));
+            assertThat(entry.getName(), equalTo("details"));
+            entry = DirEntry.create(reader.next());
+            assertThat(entry.getType(), equalTo(DirEntry.Type.TEXT));
+            assertThat(entry.getName(), equalTo("p3x-assembly.stderr"));
+            entry = DirEntry.create(reader.next());
+            assertThat(entry.getType(), equalTo(DirEntry.Type.FOLDER));
+            assertThat(entry.getName(), equalTo("Akkermansia muciniphila LeChatelierE_2013__MH0431__bin.34"));
+            entry = DirEntry.create(reader.next());
+            assertThat(entry.getType(), equalTo(DirEntry.Type.FOLDER));
+            assertThat(entry.getName(), equalTo(".Algoriphagus marincola HL-49 clonal population trimmed"));
+            entry = DirEntry.create(reader.next());
+            assertThat(entry.getType(), equalTo(DirEntry.Type.JOB_RESULT));
+            assertThat(entry.getName(), equalTo("Algoriphagus marincola HL-49 clonal population trimmed"));
+            entry = DirEntry.create(reader.next());
+            assertThat(entry.getType(), equalTo(DirEntry.Type.READS));
+            assertThat(entry.getName(), equalTo("277_12hrs_S31_R1_001.fastq"));
+            entry = DirEntry.create(reader.next());
+            assertThat(entry.getType(), equalTo(DirEntry.Type.OTHER));
+            assertThat(entry.getName(), equalTo("277_12hrs_S31_R1_001.fastq.md5"));
+        }
+    }
+
+    public void testDirTask() {
+        DirTask dirTask = new DirTask(new File("data"), "rastuser25@patricbrc.org");
+        List<DirEntry> dirList = dirTask.list("/rastuser25@patricbrc.org/Binning.Webinar");
+        assertThat(dirList.size(), equalTo(8));
+        for (DirEntry entry : dirList) {
+            switch (entry.getName()) {
+            case "Big" :
+                assertThat(entry.getType(), equalTo(DirEntry.Type.FOLDER));
+                break;
+            case "Medium" :
+                assertThat(entry.getType(), equalTo(DirEntry.Type.FOLDER));
+                break;
+            case "SRS014683.fa" :
+                assertThat(entry.getType(), equalTo(DirEntry.Type.CONTIGS));
+                break;
+            case "SRS014683.scaffolds.fa" :
+                assertThat(entry.getType(), equalTo(DirEntry.Type.CONTIGS));
+                break;
+            case "SRS014683_extract.1.fq" :
+                assertThat(entry.getType(), equalTo(DirEntry.Type.READS));
+                break;
+            case "SRS014683_extract.2.fq" :
+                assertThat(entry.getType(), equalTo(DirEntry.Type.READS));
+                break;
+            case "Small" :
+                assertThat(entry.getType(), equalTo(DirEntry.Type.FOLDER));
+                break;
+            case "contigs.fasta" :
+                assertThat(entry.getType(), equalTo(DirEntry.Type.CONTIGS));
+                break;
+            default :
+                fail("Invalid directory entry " + entry.getName());
+            }
+        }
+    }
+
+}
