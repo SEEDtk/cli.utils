@@ -5,7 +5,7 @@ package org.theseed.rna.utils;
 
 import java.io.File;
 
-import org.theseed.cli.utils.CliService;
+import org.theseed.cli.CliService;
 
 import com.github.cliftonlabs.json_simple.JsonArray;
 import com.github.cliftonlabs.json_simple.JsonObject;

@@ -1,7 +1,7 @@
 /**
  *
  */
-package org.theseed.cli.utils;
+package org.theseed.cli;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -140,6 +140,13 @@ public abstract class CliTask implements Comparable<CliTask> {
      */
     public String getJobName() {
         return this.jobName;
+    }
+
+    /**
+     * @return the working directory for temporary files
+     */
+    public File getWorkDir() {
+        return this.workDir;
     }
 
 }

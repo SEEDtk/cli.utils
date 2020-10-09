@@ -22,11 +22,11 @@ import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.theseed.cli.utils.DirEntry;
-import org.theseed.cli.utils.DirTask;
-import org.theseed.cli.utils.StatusTask;
+import org.theseed.cli.DirEntry;
+import org.theseed.cli.DirTask;
+import org.theseed.cli.MkDirTask;
+import org.theseed.cli.StatusTask;
 import org.theseed.io.TabbedLineReader;
-import org.theseed.rna.utils.RnaJob.Phase;
 import org.theseed.utils.BaseProcessor;
 
 /**
@@ -269,7 +269,7 @@ public class RnaSeqProcessor extends BaseProcessor {
             RnaJob job = iter.next();
             log.info("Starting job {} phase {}.", job.getName(), job.getPhase());
             job.startTask(this.workDir, this.workspace);
-            remaining--;
+            if (! job.needsTask()) remaining--;
         }
     }
 
@@ -306,15 +306,48 @@ public class RnaSeqProcessor extends BaseProcessor {
         log.info("Scanning output directory {}.", this.outDir);
         List<DirEntry> outputFiles = this.dirTask.list(this.outDir);
         this.updateCounter = 0;
+        boolean fpkmFound = false;
         for (DirEntry outputFile : outputFiles) {
             if (outputFile.getType() == DirEntry.Type.JOB_RESULT) {
                 // Here we have a possible job result.  Check the phase and adjust the job accordingly.
                 String jobFolder = outputFile.getName();
-                if (! this.checkJobResult(jobFolder, RnaJob.Phase.ALIGN, RnaJob.Phase.DONE))
-                    this.checkJobResult(jobFolder, RnaJob.Phase.TRIM, RnaJob.Phase.ALIGN);
+                if (! this.checkJobResult(jobFolder, RnaJob.Phase.ALIGN))
+                    this.checkJobResult(jobFolder, RnaJob.Phase.TRIM);
+            } else if (outputFile.getName().contentEquals(RnaJob.FPKM_DIR)) {
+                this.checkFpkmDirectory();
+                fpkmFound = true;
             }
         }
+        if (! fpkmFound) {
+            log.info("Creating FPKM output directory.");
+            MkDirTask mkdir = new MkDirTask(this.workDir, this.workspace);
+            mkdir.make(RnaJob.FPKM_DIR, this.outDir);
+        }
         log.info("Output directory scan complete. {} job updates recorded.", this.updateCounter);
+    }
+
+    /**
+     * Process the FPKM directory to determine which FPKM files have already been copied.
+     */
+    private void checkFpkmDirectory() {
+        RnaJob.Phase nextPhase = RnaJob.Phase.values()[RnaJob.Phase.COPY.ordinal() + 1];
+        log.info("Scanning {} folder in {}.", RnaJob.FPKM_DIR, this.outDir);
+        List<DirEntry> outputFiles = this.dirTask.list(this.outDir + "/" + RnaJob.FPKM_DIR);
+        for (DirEntry outputFile : outputFiles) {
+            if (outputFile.getType() == DirEntry.Type.TEXT) {
+                String fileName = outputFile.getName();
+                String jobName = RnaJob.Phase.COPY.checkSuffix(fileName);
+                if (jobName != null) {
+                    // Here we have a potential FPKM file.  Insure it's for one of our jobs.
+                    RnaJob job = this.activeJobs.get(jobName);
+                    if (job != null) {
+                        job.mergeState(nextPhase);
+                        log.info("Job {} updated by found FPKM file {}.", jobName, fileName);
+                        this.updateCounter++;
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -322,12 +355,12 @@ public class RnaSeqProcessor extends BaseProcessor {
      *
      * @param jobFolder		result folder from the output directory
      * @param possible		phase to check for
-     * @param nextPhase		phase to update the job with if the folder matches
      *
      * @return TRUE if the folder represents a job result for the indicated phase, else FALSE
      */
-    private boolean checkJobResult(String jobFolder, Phase possible, Phase nextPhase) {
+    private boolean checkJobResult(String jobFolder, RnaJob.Phase possible) {
         boolean retVal = false;
+        RnaJob.Phase nextPhase = RnaJob.Phase.values()[possible.ordinal() + 1];
         // Check to see if this is a possible job result for the indicated phase.
         String jobName = possible.checkSuffix(jobFolder);
         if (jobName != null) {

@@ -6,7 +6,9 @@ package org.theseed.rna.utils;
 import java.io.File;
 
 import org.apache.commons.lang3.StringUtils;
-import org.theseed.cli.utils.CliService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.theseed.cli.CopyTask;
 
 import com.github.cliftonlabs.json_simple.JsonArray;
 import com.github.cliftonlabs.json_simple.JsonObject;
@@ -22,6 +24,9 @@ import com.github.cliftonlabs.json_simple.JsonObject;
 public class RnaJob implements Comparable<RnaJob> {
 
     // FIELDS
+    /** logging facility */
+    protected static Logger log = LoggerFactory.getLogger(RnaJob.class);
+
     /** name of this job */
     private String name;
     /** ID of the current task (or NULL if none) */
@@ -38,12 +43,16 @@ public class RnaJob implements Comparable<RnaJob> {
     private Phase phase;
     /** alignment genome */
     private String alignmentGenomeId;
+    /** name of the FPKM directory */
+    public static final String FPKM_DIR = "FPKM";
+    /** name of the FPKM output file in the job folder */
+    private static final String FPKM_FILE_NAME = "Tuxedo_0_replicate1_genes.fpkm_tracking";
 
     /**
      * Enumeration for job phases
      */
     public enum Phase {
-        TRIM("_fq"), ALIGN("_rna"), DONE("");
+        TRIM("_fq"), ALIGN("_rna"), COPY("_genes.fpkm"), DONE("");
 
         private String suffix;
 
@@ -173,7 +182,7 @@ public class RnaJob implements Comparable<RnaJob> {
      * @return TRUE if this job does not have a running task
      */
     public boolean needsTask() {
-        return (this.taskId != null);
+        return (this.taskId == null);
     }
 
     /**
@@ -183,20 +192,37 @@ public class RnaJob implements Comparable<RnaJob> {
      * @param workspace		workspace name
      */
     public void startTask(File workDir, String workspace) {
-        CliService service = null;
         switch (this.phase) {
         case TRIM:
-            service = new TrimService(this, workDir, workspace);
+            TrimService trimmer = new TrimService(this, workDir, workspace);
+            this.taskId = trimmer.start();
             break;
         case ALIGN:
-            service = new AlignService(this, workDir, workspace);
+            AlignService aligner = new AlignService(this, workDir, workspace);
+            this.taskId = aligner.start();
+            break;
+        case COPY:
+            this.copyFpkmFile(workDir, workspace);
             break;
         case DONE:
-            service = null;
+            // Nothing to do here.
         }
-        // If this phase has a service, start it.
-        if (service != null)
-            this.taskId = service.start();
+    }
+
+    /**
+     * Perform the COPY task, which copies the FPKM file from the RNA job folder to the FPKM folder.
+     *
+     * @param workDir		work directory for temporary files
+     * @param workspace		workspace name
+     */
+    private void copyFpkmFile(File workDir, String workspace) {
+        CopyTask copier = new CopyTask(workDir, workspace);
+        String sourceFile = this.outDir + "/." + Phase.ALIGN.getOutputName(this.name) + "/" + FPKM_FILE_NAME;
+        String targetFile = this.outDir + "/" + FPKM_DIR + "/" + Phase.COPY.getOutputName(this.name);
+        log.info("Copying remote file {} to {}.", sourceFile, targetFile);
+        copier.copyRemoteFile(sourceFile, targetFile);
+        // The copy aborts if it fails, so we can mark this task done.
+        this.phase = Phase.DONE;
     }
 
     /**

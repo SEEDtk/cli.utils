@@ -1,7 +1,7 @@
 /**
  *
  */
-package org.theseed.cli.utils;
+package org.theseed.cli;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;

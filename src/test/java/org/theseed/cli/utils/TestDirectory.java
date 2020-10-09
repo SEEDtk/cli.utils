@@ -4,12 +4,18 @@
 package org.theseed.cli.utils;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.theseed.test.Matchers.*;
 import static org.hamcrest.Matchers.*;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
+import org.theseed.cli.CopyTask;
+import org.theseed.cli.DirEntry;
+import org.theseed.cli.DirTask;
 import org.theseed.io.LineReader;
 
 import junit.framework.TestCase;
@@ -90,6 +96,16 @@ public class TestDirectory extends TestCase {
                 fail("Invalid directory entry " + entry.getName());
             }
         }
+    }
+
+    public void testCopyTask() throws IOException {
+        CopyTask copyTask = new CopyTask(new File("data"), "rastuser25@patricbrc.org");
+        File[] copied = copyTask.copyRemoteFolder("/rastuser25@patricbrc.org/Binning.Webinar/Big");
+        assertThat(copied.length, equalTo(3));
+        List<String> names = Arrays.stream(copied).map(f -> f.getName()).collect(Collectors.toList());
+        assertThat(names, containsInAnyOrder("coupling10.test.tbl", "coupling200.log", "couplings200.random.weighted.tbl"));
+        for (File copy : copied)
+            assertThat(copy.getAbsolutePath(), copy.canRead(), isTrue());
     }
 
 }

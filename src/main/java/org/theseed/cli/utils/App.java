@@ -9,6 +9,7 @@ import org.theseed.utils.BaseProcessor;
  * Commands for utilities relating to CLI processing.
  *
  * fpkm		run jobs to convert FASTQ files to FPKM results
+ * rnaPage	produce a web page from RNA sequence alignment results
  *
  */
 public class App

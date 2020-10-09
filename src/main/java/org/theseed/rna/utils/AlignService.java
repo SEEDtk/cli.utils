@@ -6,9 +6,9 @@ package org.theseed.rna.utils;
 import java.io.File;
 import java.util.List;
 
-import org.theseed.cli.utils.CliService;
-import org.theseed.cli.utils.DirEntry;
-import org.theseed.cli.utils.DirTask;
+import org.theseed.cli.CliService;
+import org.theseed.cli.DirEntry;
+import org.theseed.cli.DirTask;
 
 import com.github.cliftonlabs.json_simple.JsonArray;
 import com.github.cliftonlabs.json_simple.JsonObject;
