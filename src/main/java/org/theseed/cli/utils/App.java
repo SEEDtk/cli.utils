@@ -2,15 +2,15 @@ package org.theseed.cli.utils;
 
 import java.util.Arrays;
 
+import org.theseed.rna.utils.FpkmSummaryProcessor;
 import org.theseed.rna.utils.RnaSeqProcessor;
 import org.theseed.utils.BaseProcessor;
 
 /**
  * Commands for utilities relating to CLI processing.
  *
- * fpkm		run jobs to convert FASTQ files to FPKM results
- * rnaPage	produce a web page from RNA sequence alignment results
- *
+ * fpkm			run jobs to convert FASTQ files to FPKM results
+ * fpkmSummary	produce a summary file from FPKM results
  */
 public class App
 {
@@ -24,6 +24,9 @@ public class App
         switch (command) {
         case "fpkm" :
             processor = new RnaSeqProcessor();
+            break;
+        case "fpkmsummary" :
+            processor = new FpkmSummaryProcessor();
             break;
         default:
             throw new RuntimeException("Invalid command " + command);
