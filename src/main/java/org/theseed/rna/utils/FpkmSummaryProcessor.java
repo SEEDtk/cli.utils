@@ -4,6 +4,7 @@
 package org.theseed.rna.utils;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.TreeSet;
@@ -27,15 +28,22 @@ import org.theseed.utils.BaseProcessor;
  * The positional parameters are the name of the genome file for the aligned genome, the name of the input PATRIC directory,
  * and the name of the relevant workspace.
  *
+ * The standard input should contain a tab-delimited metadata file describing each sample.  The file should contain the
+ * sample ID in the first column, the production level in the second (in mg/l), and the optical density in the third.
+ * It is expected that some values will be missing.  Only samples present in the file will be processed.  The file should
+ * be tab-delimited with headers.
+ *
  * The result file will be on the standard output.
  *
  * The command-line options are as follows.
  *
  * -h	display command-line usage
  * -v	display more detailed progress messages
+ * -i	input file (if not STDIN)
  *
  * --format		output format (default TEXT)
  * --workDir	work directory for temporary files
+ * --save		if specified, the name of a file to contain a binary version of the output
  *
  * @author Bruce Parrello
  *
@@ -62,6 +70,14 @@ public class FpkmSummaryProcessor extends BaseProcessor implements FpkmReporter.
     @Option(name = "--workDir", metaVar = "workDir", usage = "work directory for temporary files")
     private File workDir;
 
+    /** input file */
+    @Option(name = "-i", aliases = { "--input" }, metaVar = "meta.tbl", usage = "tab-delimited file of metadata (if not STDIN")
+    private File inFile;
+
+    /** optional save file */
+    @Option(name = "--save", metaVar = "rnaData.ser", usage = "if specified, a file in which to save a binary version of the RNA data")
+    private File saveFile;
+
     /** GTO file for aligned genome */
     @Argument(index = 0, metaVar = "base.gto", usage = "GTO file for the base genome")
     private File baseGenomeFile;
@@ -78,6 +94,8 @@ public class FpkmSummaryProcessor extends BaseProcessor implements FpkmReporter.
     protected void setDefaults() {
         this.workDir = new File(System.getProperty("user.dir"), "Temp");
         this.outFormat = FpkmReporter.Type.TEXT;
+        this.inFile = null;
+        this.saveFile = null;
     }
 
     @Override
@@ -94,6 +112,16 @@ public class FpkmSummaryProcessor extends BaseProcessor implements FpkmReporter.
         this.baseGenome = new Genome(this.baseGenomeFile);
         // Create the reporter.
         this.outStream = this.outFormat.create(System.out, this);
+        // Process the input.
+        if (this.inFile == null) {
+            log.info("Reading metadata from standard input.");
+            this.outStream.readMeta(System.in);
+        } else {
+            log.info("Reading metadata from {}.", this.inFile);
+            try (FileInputStream inStream = new FileInputStream(this.inFile)) {
+                this.outStream.readMeta(inStream);
+            }
+        }
         return true;
     }
 
@@ -110,7 +138,7 @@ public class FpkmSummaryProcessor extends BaseProcessor implements FpkmReporter.
             CopyTask copy = new CopyTask(this.workDir, this.workspace);
             File[] fpkmFiles = copy.copyRemoteFolder(this.inDir + "/" + RnaJob.FPKM_DIR);
             // Loop through the files.
-            this.outStream.startReport(fpkmFiles.length);
+            this.outStream.startReport();
             for (File fpkmFile : fpkmFiles) {
                 try (TabbedLineReader fpkmStream = new TabbedLineReader(fpkmFile)) {
                     // Get the sample ID for this file.
@@ -178,6 +206,9 @@ public class FpkmSummaryProcessor extends BaseProcessor implements FpkmReporter.
             }
             // Close out the report.
             this.outStream.endReport();
+            // Check for a save file.
+            if (this.saveFile != null)
+                this.outStream.saveBinary(this.saveFile);
         } finally {
             this.outStream.close();
         }

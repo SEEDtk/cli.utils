@@ -3,15 +3,17 @@
  */
 package org.theseed.reports;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.SortedMap;
-import java.util.TreeMap;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.genome.Feature;
+import org.theseed.io.TabbedLineReader;
+import org.theseed.rna.RnaData;
+import org.theseed.rna.RnaData.JobData;
 
 /**
  * This is the base class for the FPKM summary report.  This class is responsible for converting the columnar inputs to
@@ -25,107 +27,11 @@ public abstract class FpkmReporter implements AutoCloseable {
     // FIELDS
     /** logging facility */
     protected static Logger log = LoggerFactory.getLogger(FpkmReporter.class);
-    /** list of samples */
-    private List<String> jobNames;
-    /** maximum number of samples */
-    private int estimatedSamples;
-    /** map of features to data rows */
-    private SortedMap<Feature, Row> rowMap;
 
-    /**
-     * This nested class represents a weight report
-     */
-    protected static class Weight {
-        private boolean exactHit;
-        private double weight;
-
-        /**
-         * Create a weight record.
-         *
-         * @param exact		TRUE if this is the weight for an exact hit
-         * @param wValue	weight of the hit
-         */
-        private Weight(boolean exact, double wValue) {
-            this.exactHit = exact;
-            this.weight = wValue;
-        }
-
-        /**
-         * @return TRUE if this was an exact hit
-         */
-        public boolean isExactHit() {
-            return this.exactHit;
-        }
-
-        /**
-         * @return the weight of the hit
-         */
-        public double getWeight() {
-            return this.weight;
-        }
-
-    }
-
-    /**
-     * This nested class represents a feature row.
-     */
-    public class Row {
-        /** feature hit */
-        private Feature feat;
-        /** neighbor feature (or NULL) */
-        private Feature neighbor;
-        /** hit list */
-        private Weight[] weights;
-
-        /**
-         * Create a row for a feature.
-         *
-         * @param feat		target feature
-         * @param neighbor	useful neighbor
-         */
-        private Row(Feature feat, Feature neighbor) {
-            this.feat = feat;
-            this.neighbor = neighbor;
-            // Clear the weights.
-            this.weights = new Weight[FpkmReporter.this.estimatedSamples];
-        }
-
-        /**
-         * Store a weight for the current column.
-         *
-         * @param exact		TRUE if the weight is for an exact hit
-         * @param wValue	value of the weight
-         */
-        private void store(boolean exact, double wValue) {
-            Weight w = new Weight(exact, wValue);
-            int idx = FpkmReporter.this.jobNames.size() - 1;
-            this.weights[idx] = w;
-        }
-
-        /**
-         * @return the target feature
-         */
-        public Feature getFeat() {
-            return this.feat;
-        }
-
-        /**
-         * @return the neighbor feature
-         */
-        public Feature getNeighbor() {
-            return this.neighbor;
-        }
-
-        /**
-         * @return the weight in the specified column
-         *
-         * @param iCol	column of interest
-         */
-        public Weight getWeight(int iCol) {
-            return this.weights[iCol];
-        }
-
-    }
+    /** repository of collected data */
+    private RnaData data;
+    /** name of the current sample */
+    private String jobName;
 
 
     /**
@@ -164,15 +70,8 @@ public abstract class FpkmReporter implements AutoCloseable {
 
     /**
      * Initialize the report.
-     *
-     * @param maxSamples	maximum number of samples
      */
-    public void startReport(int maxSamples) {
-        this.jobNames = new ArrayList<String>(maxSamples);
-        this.estimatedSamples = maxSamples;
-        // Create the row map.  We sort the features by location.
-        this.rowMap = new TreeMap<Feature, Row>(new Feature.LocationComparator());
-    }
+    public void startReport() { }
 
     /**
      * Begin processing a single sample.
@@ -181,7 +80,7 @@ public abstract class FpkmReporter implements AutoCloseable {
      */
     public void startJob(String jobName) {
         // Save the sample name.
-        this.jobNames.add(jobName);
+        this.jobName = jobName;
     }
 
     /**
@@ -194,33 +93,33 @@ public abstract class FpkmReporter implements AutoCloseable {
      */
     public void recordHit(Feature feat, boolean exactHit, Feature neighbor, double weight) {
         // Get the row for this feature.
-        Row fRow = this.rowMap.computeIfAbsent(feat, x -> new Row(x, neighbor));
+        RnaData.Row fRow = this.data.getRow(feat, neighbor);
         // Add this weight.
-        fRow.store(exactHit, weight);
+        fRow.store(this.jobName, exactHit, weight);
     }
 
     /**
      * Terminate the report.  This actually produces the output.
      */
     public void endReport() {
-        this.openReport(this.jobNames);
-        for (Row row : this.rowMap.values())
+        this.openReport(this.data.getSamples());
+        for (RnaData.Row row : this.data)
             this.writeRow(row);
     }
 
     /**
      * Initialize the output.
      *
-     * @param jobNames		list of sample names
+     * @param list		list of sample descriptors
      */
-    protected abstract void openReport(List<String> jobNames);
+    protected abstract void openReport(List<JobData> list);
 
     /**
      * Write the data for a single row.
      *
      * @param row	row of weights to write for a specific feature.
      */
-    protected abstract void writeRow(Row row);
+    protected abstract void writeRow(RnaData.Row row);
 
     /**
      * Finish the report and flush the output.
@@ -230,6 +129,50 @@ public abstract class FpkmReporter implements AutoCloseable {
     @Override
     public void close() {
         this.closeReport();
+    }
+
+    /**
+     * Read the meta-data file to get the JobData objects.
+     *
+     * @param in	input stream for meta-data file
+     *
+     * @throws IOException
+     */
+    public void readMeta(InputStream in) throws IOException {
+        this.data = new RnaData();
+        try (TabbedLineReader reader = new TabbedLineReader(in)) {
+            for (TabbedLineReader.Line line : reader) {
+                String jobName = line.get(0);
+                double production = computeDouble(line.get(1)) / 1000.0;
+                double density = computeDouble(line.get(2));
+                this.data.addJob(jobName, production, density);
+            }
+        }
+        log.info("{} samples found in meta-data file.", this.data.size());
+    }
+
+    /**
+     * @return a string as a double, converting the empty string into NaN
+     *
+     * @param string	input string to parse
+     */
+    private double computeDouble(String string) {
+        double retVal = Double.NaN;
+        if (! string.isEmpty())
+            retVal = Double.valueOf(string);
+        return retVal;
+    }
+
+    /**
+     * Save the accumulated RNA data in binary format
+     *
+     * @param saveFile		proposed save file
+     *
+     * @throws IOException
+     */
+    public void saveBinary(File saveFile) throws IOException {
+        this.data.save(saveFile);
+
     }
 
 }

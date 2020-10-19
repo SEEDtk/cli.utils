@@ -213,8 +213,9 @@ public class RnaSeqProcessor extends BaseProcessor {
             log.info("{} jobs in progress.", incomplete.size());
             this.processJobs(incomplete);
             incomplete = this.getIncomplete();
-            Thread.sleep(this.waitInterval);
             remaining--;
+            log.info("Sleeping. {} cycles left.", remaining);
+            Thread.sleep(this.waitInterval);
         }
     }
 

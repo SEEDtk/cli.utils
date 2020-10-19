@@ -13,7 +13,7 @@ import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.theseed.genome.Feature;
+import org.theseed.rna.RnaData;
 import org.apache.poi.common.usermodel.HyperlinkType;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
@@ -78,10 +78,10 @@ public class ExcelFpkmReporter extends FpkmReporter {
     }
 
     @Override
-    protected void openReport(List<String> jobNames) {
+    protected void openReport(List<RnaData.JobData> samples) {
         log.info("Creating workbook.");
         // Save the sample count.
-        this.nSamples = jobNames.size();
+        this.nSamples = samples.size();
         // Create the workbook and the sheet.
         this.workbook = new XSSFWorkbook();
         this.worksheet = this.workbook.createSheet("FPKM");
@@ -108,10 +108,32 @@ public class ExcelFpkmReporter extends FpkmReporter {
         this.setStyledCell(3, "function", this.headStyle);
         int colNum = 3;
         // After the header columns, there is one column per sample.  Each is hyperlinked to its samstat page.
-        for (String jobName : jobNames) {
-            Cell cell = this.setStyledCell(++colNum, jobName, headStyle);
-            String url = this.getSamstatLink(jobName);
+        for (RnaData.JobData sample : samples) {
+            Cell cell = this.setStyledCell(++colNum, sample.getName(), headStyle);
+            String url = this.getSamstatLink(sample.getName());
             this.setHref(cell, url);
+        }
+        // Now we have the two metadata rows.
+        this.addRow();
+        this.setStyledCell(0, "Thr g/l", this.headStyle);
+        double[] prodValues = samples.stream().mapToDouble(x -> x.getProduction()).toArray();
+        this.fillMetaRow(prodValues);
+        this.addRow();
+        this.setStyledCell(0, "OD", this.headStyle);
+        double[] optValues = samples.stream().mapToDouble(x -> x.getOpticalDensity()).toArray();
+        this.fillMetaRow(optValues);
+    }
+
+    /**
+     * Fill the current row with meta-data numbers.
+     *
+     * @param values	array of meta-data values
+     */
+    private void fillMetaRow(double[] values) {
+        int colNum = 3;
+        for (double v : values) {
+            if (! Double.isNaN(v))
+                this.setNumCell(++colNum, v);
         }
     }
 
@@ -180,7 +202,7 @@ public class ExcelFpkmReporter extends FpkmReporter {
      * @param cell	cell to link
      * @param feat	target feature for link (if NULL, no link will be generated)
      */
-    public void setHref(Cell cell, Feature feat) {
+    public void setHref(Cell cell, RnaData.FeatureData feat) {
         if (feat != null) {
             try {
                 String encodedFid = URLEncoder.encode(feat.getId(), StandardCharsets.UTF_8.toString());
@@ -194,22 +216,22 @@ public class ExcelFpkmReporter extends FpkmReporter {
 
 
     @Override
-    protected void writeRow(Row row) {
+    protected void writeRow(RnaData.Row row) {
         // Get the main feature and its function.
-        Feature feat = row.getFeat();
+        RnaData.FeatureData feat = row.getFeat();
         String fid = feat.getId();
         // Create the row and put in the heading cell.
         this.addRow();
         Cell cell = this.setStyledCell(0, fid, this.headStyle);
         this.setHref(cell, feat);
-        this.setTextCell(1, feat.getPegFunction());
+        this.setTextCell(1, feat.getFunction());
         // Process the neighbor.
-        Feature neighbor = row.getNeighbor();
+        RnaData.FeatureData neighbor = row.getNeighbor();
         String neighborId = "";
         String neighborFun = "";
         if (neighbor != null) {
             neighborId = neighbor.getId();
-            neighborFun = neighbor.getPegFunction();
+            neighborFun = neighbor.getFunction();
         }
         cell = this.setTextCell(2, neighborId);
         this.setHref(cell, neighbor);
@@ -217,7 +239,7 @@ public class ExcelFpkmReporter extends FpkmReporter {
         // Now we run through the weights.
         int colNum = 3;
         for (int i = 0; i < this.nSamples; i++) {
-            Weight weight = row.getWeight(i);
+            RnaData.Weight weight = row.getWeight(i);
             colNum++;
             if (weight == null)
                 this.setTextCell(colNum, "");
