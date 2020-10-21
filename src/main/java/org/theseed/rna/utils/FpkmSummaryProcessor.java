@@ -29,9 +29,9 @@ import org.theseed.utils.BaseProcessor;
  * and the name of the relevant workspace.
  *
  * The standard input should contain a tab-delimited metadata file describing each sample.  The file should contain the
- * sample ID in the first column, the production level in the second (in mg/l), and the optical density in the third.
- * It is expected that some values will be missing.  Only samples present in the file will be processed.  The file should
- * be tab-delimited with headers.
+ * sample ID in the first column, the production level in the second (in mg/l), the optical density in the third, and the
+ * original sample name in the third.  It is expected that some values will be missing.  Only samples present in the file
+ * will be processed.  The file should be tab-delimited with headers.
  *
  * The result file will be on the standard output.
  *
@@ -43,6 +43,7 @@ import org.theseed.utils.BaseProcessor;
  *
  * --format		output format (default TEXT)
  * --workDir	work directory for temporary files
+ * --normalize	if specified, RNA features will be removed, and the FPKM numbers will be normalized to TPMs
  * --save		if specified, the name of a file to contain a binary version of the output
  *
  * @author Bruce Parrello
@@ -78,6 +79,10 @@ public class FpkmSummaryProcessor extends BaseProcessor implements FpkmReporter.
     @Option(name = "--save", metaVar = "rnaData.ser", usage = "if specified, a file in which to save a binary version of the RNA data")
     private File saveFile;
 
+    /** normalize */
+    @Option(name = "--normalize", usage = "if specified, FPKMs will be converted to TPMs")
+    private boolean normalizeFlag;
+
     /** GTO file for aligned genome */
     @Argument(index = 0, metaVar = "base.gto", usage = "GTO file for the base genome")
     private File baseGenomeFile;
@@ -96,6 +101,7 @@ public class FpkmSummaryProcessor extends BaseProcessor implements FpkmReporter.
         this.outFormat = FpkmReporter.Type.TEXT;
         this.inFile = null;
         this.saveFile = null;
+        this.normalizeFlag = false;
     }
 
     @Override
@@ -203,6 +209,11 @@ public class FpkmSummaryProcessor extends BaseProcessor implements FpkmReporter.
                         }
                     }
                 }
+            }
+            // Check for normalization.
+            if (this.normalizeFlag) {
+                log.info("Normalizing FPKMs to TPMs.");
+                this.outStream.normalize();
             }
             // Close out the report.
             this.outStream.endReport();

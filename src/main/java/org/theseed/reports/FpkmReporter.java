@@ -38,16 +38,19 @@ public abstract class FpkmReporter implements AutoCloseable {
      * Enumeration of report formats
      */
     public static enum Type {
-        TEXT, EXCEL;
+        TEXT, EXCEL, CSV;
 
         public FpkmReporter create(OutputStream output, IParms processor) {
             FpkmReporter retVal = null;
             switch (this) {
             case TEXT :
-                retVal = new TextFpkmReporter(output, processor);
+                retVal = new TextFpkmReporter.Tab(output, processor);
                 break;
             case EXCEL:
                 retVal = new ExcelFpkmReporter(output, processor);
+                break;
+            case CSV:
+                retVal = new TextFpkmReporter.CSV(output, processor);
                 break;
             }
             return retVal;
@@ -145,7 +148,8 @@ public abstract class FpkmReporter implements AutoCloseable {
                 String jobName = line.get(0);
                 double production = computeDouble(line.get(1)) / 1000.0;
                 double density = computeDouble(line.get(2));
-                this.data.addJob(jobName, production, density);
+                String oldName = line.get(3);
+                this.data.addJob(jobName, production, density, oldName);
             }
         }
         log.info("{} samples found in meta-data file.", this.data.size());
@@ -171,8 +175,15 @@ public abstract class FpkmReporter implements AutoCloseable {
      * @throws IOException
      */
     public void saveBinary(File saveFile) throws IOException {
+        log.info("Saving binary output to {}.", saveFile);
         this.data.save(saveFile);
+    }
 
+    /**
+     * Normalize the data accumulated for this report.
+     */
+    public void normalize() {
+        this.data.normalize();
     }
 
 }

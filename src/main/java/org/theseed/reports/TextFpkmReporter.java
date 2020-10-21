@@ -8,6 +8,7 @@ import java.io.PrintWriter;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.StringUtils;
 import org.theseed.rna.RnaData;
 
 /**
@@ -25,6 +26,14 @@ public class TextFpkmReporter extends FpkmReporter {
     private int nSamples;
     /** print writer for output */
     private PrintWriter writer;
+    /** quote string */
+    private String quote;
+    /** delimiter character */
+    private String delim;
+    /** format for weight columns */
+    private String weightFormat;
+    /** constant headings */
+    private static final String[] HEADINGS = new String[] { "fid", "gene", "function", "neighbor" };
 
     /**
      * Construct this report.
@@ -32,14 +41,19 @@ public class TextFpkmReporter extends FpkmReporter {
      * @param output		output stream
      * @param processor		controlling processor object
      */
-    public TextFpkmReporter(OutputStream output, IParms processor) {
+    public TextFpkmReporter(OutputStream output, IParms processor, String delim, String quote) {
         this.writer = new PrintWriter(output);
+        this.delim = delim;
+        this.quote = quote;
+        this.weightFormat = this.delim + "%8.4f";
     }
 
     @Override
     protected void openReport(List<RnaData.JobData> samples) {
-        // Here we write the headings.  Note the empty column after each heading to leave room for the exact-hit flag.
-        this.writer.println("fid\tfunction\tneighbor\tneighbor_fun\t" + samples.stream().map(x -> x.getName() + "\t").collect(Collectors.joining("\t")));
+        // Here we write the headings.
+        String headings = StringUtils.join(HEADINGS, this.delim);
+        this.writer.println(headings + this.delim
+                + samples.stream().map(x -> x.getName()).collect(Collectors.joining(this.delim)));
         // Create the string buffer.
         this.nSamples = samples.size();
         this.buffer = new StringBuffer(100 + 15 * this.nSamples);
@@ -50,22 +64,21 @@ public class TextFpkmReporter extends FpkmReporter {
         // Here we write the row.  We need to get some data items out of the feature.
         RnaData.FeatureData feat = row.getFeat();
         String function = feat.getFunction();
+        String gene = feat.getGene();
         RnaData.FeatureData neighbor = row.getNeighbor();
         String neighborId = "";
-        String neighborFun = "";
         if (neighbor != null) {
             neighborId = neighbor.getId();
-            neighborFun = neighbor.getFunction();
         }
         this.buffer.setLength(0);
-        this.buffer.append(feat.getId() + "\t" + function + "\t" + neighborId + "\t" + neighborFun);
+        this.buffer.append(feat.getId() + this.delim + gene + this.delim + this.quote + function + this.quote
+                + this.delim + neighborId);
         for (int i = 0; i < this.nSamples; i++) {
             RnaData.Weight weight = row.getWeight(i);
             if (weight == null)
-                this.buffer.append("\t\t");
+                this.buffer.append(this.delim);
             else {
-                char flag = (weight.isExactHit() ? ' ' : '*');
-                this.buffer.append(String.format("\t%8.4f\t%c", weight.getWeight(), flag));
+                this.buffer.append(String.format(this.weightFormat, weight.getWeight()));
             }
         }
         this.writer.println(this.buffer.toString());
@@ -76,5 +89,37 @@ public class TextFpkmReporter extends FpkmReporter {
         this.writer.close();
     }
 
+    /**
+     * Tab-delimited text report.
+     */
+    public static class Tab extends TextFpkmReporter {
 
+        /**
+         * Construct this report.
+         *
+         * @param output		output stream
+         * @param processor		controlling processor object
+         */
+        public Tab(OutputStream output, IParms processor) {
+            super(output, processor, "\t", "");
+        }
+
+    }
+
+    /**
+     * CSVtext report.
+     */
+    public static class CSV extends TextFpkmReporter {
+
+        /**
+         * Construct this report.
+         *
+         * @param output		output stream
+         * @param processor		controlling processor object
+         */
+        public CSV(OutputStream output, IParms processor) {
+            super(output, processor, ",", "\"");
+        }
+
+    }
 }

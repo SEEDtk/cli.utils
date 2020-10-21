@@ -103,9 +103,9 @@ public class ExcelFpkmReporter extends FpkmReporter {
         this.rowNum = 0;
         this.addRow();
         this.setStyledCell(0, "peg_id", this.headStyle);
-        this.setStyledCell(1, "function", this.headStyle);
-        this.setStyledCell(2, "neighbor", this.headStyle);
-        this.setStyledCell(3, "function", this.headStyle);
+        this.setStyledCell(1, "gene", this.headStyle);
+        this.setStyledCell(2, "function", this.headStyle);
+        this.setStyledCell(3, "neighbor", this.headStyle);
         int colNum = 3;
         // After the header columns, there is one column per sample.  Each is hyperlinked to its samstat page.
         for (RnaData.JobData sample : samples) {
@@ -113,7 +113,11 @@ public class ExcelFpkmReporter extends FpkmReporter {
             String url = this.getSamstatLink(sample.getName());
             this.setHref(cell, url);
         }
-        // Now we have the two metadata rows.
+        // Now we have the metadata rows.
+        this.addRow();
+        this.setStyledCell(0, "Old Name", this.headStyle);
+        String[] nameValues = samples.stream().map(x -> x.getOldName()).toArray(String[]::new);
+        this.fillMetaRow(nameValues);
         this.addRow();
         this.setStyledCell(0, "Thr g/l", this.headStyle);
         double[] prodValues = samples.stream().mapToDouble(x -> x.getProduction()).toArray();
@@ -122,6 +126,17 @@ public class ExcelFpkmReporter extends FpkmReporter {
         this.setStyledCell(0, "OD", this.headStyle);
         double[] optValues = samples.stream().mapToDouble(x -> x.getOpticalDensity()).toArray();
         this.fillMetaRow(optValues);
+    }
+
+    /**
+     * Fill the current row with meta-data strings.
+     *
+     * @param values	array of meta-data values
+     */
+    private void fillMetaRow(String[] values) {
+        int colNum = 3;
+        for (String v : values)
+            this.setTextCell(++colNum, v);
     }
 
     /**
@@ -224,18 +239,15 @@ public class ExcelFpkmReporter extends FpkmReporter {
         this.addRow();
         Cell cell = this.setStyledCell(0, fid, this.headStyle);
         this.setHref(cell, feat);
-        this.setTextCell(1, feat.getFunction());
+        this.setTextCell(1, feat.getGene());
+        this.setTextCell(2, feat.getFunction());
         // Process the neighbor.
         RnaData.FeatureData neighbor = row.getNeighbor();
         String neighborId = "";
-        String neighborFun = "";
-        if (neighbor != null) {
+        if (neighbor != null)
             neighborId = neighbor.getId();
-            neighborFun = neighbor.getFunction();
-        }
-        cell = this.setTextCell(2, neighborId);
+        cell = this.setTextCell(3, neighborId);
         this.setHref(cell, neighbor);
-        this.setTextCell(3, neighborFun);
         // Now we run through the weights.
         int colNum = 3;
         for (int i = 0; i < this.nSamples; i++) {
@@ -275,9 +287,9 @@ public class ExcelFpkmReporter extends FpkmReporter {
                 this.worksheet.createFreezePane(1, 1);
                 // Fix the column widths.
                 this.worksheet.autoSizeColumn(0);
-                this.worksheet.setColumnWidth(1, FUNCTION_WIDTH);
-                this.worksheet.autoSizeColumn(2);
-                this.worksheet.setColumnWidth(3, FUNCTION_WIDTH);
+                this.worksheet.autoSizeColumn(1);
+                this.worksheet.setColumnWidth(2, FUNCTION_WIDTH);
+                this.worksheet.autoSizeColumn(3);
                 for (int i = 4; i < this.nSamples + 4; i++)
                     this.worksheet.setColumnWidth(i, DEFAULT_WIDTH);
                 log.info("Writing workbook.");
