@@ -9,6 +9,8 @@ import java.io.UncheckedIOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -49,6 +51,10 @@ public class ExcelFpkmReporter extends FpkmReporter {
     private int rowNum;
     /** number of samples */
     private int nSamples;
+    /** saved list of sample descriptors */
+    private List<RnaData.JobData> samples;
+    /** array of FPKM totals */
+    private double[] totals;
     /** current row */
     private org.apache.poi.ss.usermodel.Row ssRow;
     /** header style */
@@ -78,10 +84,11 @@ public class ExcelFpkmReporter extends FpkmReporter {
     }
 
     @Override
-    protected void openReport(List<RnaData.JobData> samples) {
+    protected void openReport(List<RnaData.JobData> actualSamples) {
         log.info("Creating workbook.");
-        // Save the sample count.
-        this.nSamples = samples.size();
+        // Save the sample count and the sample array.
+        this.nSamples = actualSamples.size();
+        this.samples = actualSamples;
         // Create the workbook and the sheet.
         this.workbook = new XSSFWorkbook();
         this.worksheet = this.workbook.createSheet("FPKM");
@@ -104,11 +111,12 @@ public class ExcelFpkmReporter extends FpkmReporter {
         this.addRow();
         this.setStyledCell(0, "peg_id", this.headStyle);
         this.setStyledCell(1, "gene", this.headStyle);
-        this.setStyledCell(2, "function", this.headStyle);
-        this.setStyledCell(3, "neighbor", this.headStyle);
+        this.setStyledCell(2, "bNumber", this.headStyle);
+        this.setStyledCell(3, "function", this.headStyle);
+        this.setStyledCell(4, "neighbor", this.headStyle);
         int colNum = 3;
         // After the header columns, there is one column per sample.  Each is hyperlinked to its samstat page.
-        for (RnaData.JobData sample : samples) {
+        for (RnaData.JobData sample : actualSamples) {
             Cell cell = this.setStyledCell(++colNum, sample.getName(), headStyle);
             String url = this.getSamstatLink(sample.getName());
             this.setHref(cell, url);
@@ -116,16 +124,19 @@ public class ExcelFpkmReporter extends FpkmReporter {
         // Now we have the metadata rows.
         this.addRow();
         this.setStyledCell(0, "Old Name", this.headStyle);
-        String[] nameValues = samples.stream().map(x -> x.getOldName()).toArray(String[]::new);
+        String[] nameValues = actualSamples.stream().map(x -> x.getOldName()).toArray(String[]::new);
         this.fillMetaRow(nameValues);
         this.addRow();
         this.setStyledCell(0, "Thr g/l", this.headStyle);
-        double[] prodValues = samples.stream().mapToDouble(x -> x.getProduction()).toArray();
+        double[] prodValues = actualSamples.stream().mapToDouble(x -> x.getProduction()).toArray();
         this.fillMetaRow(prodValues);
         this.addRow();
         this.setStyledCell(0, "OD", this.headStyle);
-        double[] optValues = samples.stream().mapToDouble(x -> x.getOpticalDensity()).toArray();
+        double[] optValues = actualSamples.stream().mapToDouble(x -> x.getOpticalDensity()).toArray();
         this.fillMetaRow(optValues);
+        // Create the totals array.
+        this.totals = new double[this.nSamples];
+        Arrays.fill(this.totals, 0.0);
     }
 
     /**
@@ -240,16 +251,17 @@ public class ExcelFpkmReporter extends FpkmReporter {
         Cell cell = this.setStyledCell(0, fid, this.headStyle);
         this.setHref(cell, feat);
         this.setTextCell(1, feat.getGene());
-        this.setTextCell(2, feat.getFunction());
+        this.setTextCell(2, feat.getBNumber());
+        this.setTextCell(3, feat.getFunction());
         // Process the neighbor.
         RnaData.FeatureData neighbor = row.getNeighbor();
         String neighborId = "";
         if (neighbor != null)
             neighborId = neighbor.getId();
-        cell = this.setTextCell(3, neighborId);
+        cell = this.setTextCell(4, neighborId);
         this.setHref(cell, neighbor);
         // Now we run through the weights.
-        int colNum = 3;
+        int colNum = 4;
         for (int i = 0; i < this.nSamples; i++) {
             RnaData.Weight weight = row.getWeight(i);
             colNum++;
@@ -260,6 +272,8 @@ public class ExcelFpkmReporter extends FpkmReporter {
                 // An inexact hit is colored pink.
                 if (! weight.isExactHit())
                     cell.setCellStyle(this.alertStyle);
+                // Update the totals.
+                this.totals[i] += weight.getWeight();
             }
         }
     }
@@ -274,7 +288,8 @@ public class ExcelFpkmReporter extends FpkmReporter {
      */
     private Cell setNumCell(int colNum, double num) {
         Cell retVal = this.ssRow.createCell(colNum);
-        retVal.setCellValue(num);
+        if (! Double.isNaN(num))
+            retVal.setCellValue(num);
         return retVal;
     }
 
@@ -288,10 +303,39 @@ public class ExcelFpkmReporter extends FpkmReporter {
                 // Fix the column widths.
                 this.worksheet.autoSizeColumn(0);
                 this.worksheet.autoSizeColumn(1);
-                this.worksheet.setColumnWidth(2, FUNCTION_WIDTH);
-                this.worksheet.autoSizeColumn(3);
-                for (int i = 4; i < this.nSamples + 4; i++)
+                this.worksheet.autoSizeColumn(2);
+                this.worksheet.setColumnWidth(3, FUNCTION_WIDTH);
+                this.worksheet.autoSizeColumn(4);
+                for (int i = 5; i < this.nSamples + 5; i++)
                     this.worksheet.setColumnWidth(i, DEFAULT_WIDTH);
+                // Create the totals page.
+                log.info("Building totals page.");
+                this.worksheet = this.workbook.createSheet("Totals");
+                this.rowNum = 0;
+                // Add a header row.
+                this.addRow();
+                this.setStyledCell(0, "Sample", this.headStyle);
+                this.setStyledCell(1, "Old Name", this.headStyle);
+                this.setStyledCell(2, "Thr g/l", this.headStyle);
+                this.setStyledCell(3, "OD", this.headStyle);
+                this.setStyledCell(4, "FPKM Total", this.headStyle);
+                // Create the data rows, one per sample.
+                for (int i = 0; i < nSamples; i++) {
+                    this.addRow();
+                    RnaData.JobData sample = this.samples.get(i);
+                    this.setStyledCell(0, sample.getName(), this.headStyle);
+                    List<Cell> cells = new ArrayList<Cell>(4);
+                    cells.add(this.setTextCell(1, sample.getOldName()));
+                    cells.add(this.setNumCell(2, sample.getProduction()));
+                    cells.add(this.setNumCell(3, sample.getOpticalDensity()));
+                    cells.add(this.setNumCell(4, this.totals[i]));
+                    // Color the cells for a suspicious sample.
+                    if (sample.isSuspicious())
+                        cells.stream().forEach(x -> x.setCellStyle(this.alertStyle));
+                }
+                this.worksheet.autoSizeColumn(0);
+                this.worksheet.autoSizeColumn(1);
+                this.worksheet.autoSizeColumn(4);
                 log.info("Writing workbook.");
                 this.workbook.write(this.outStream);
             }

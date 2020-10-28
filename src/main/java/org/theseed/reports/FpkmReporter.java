@@ -80,10 +80,16 @@ public abstract class FpkmReporter implements AutoCloseable {
      * Begin processing a single sample.
      *
      * @param jobName	sample name
+     *
+     * @return TRUE if the sample is valid, else FALSE
      */
-    public void startJob(String jobName) {
-        // Save the sample name.
-        this.jobName = jobName;
+    public boolean startJob(String jobName) {
+        Integer jobIdx = this.data.findColIdx(jobName);
+        boolean retVal = (jobIdx != null);
+        if (retVal)
+            // Save the sample name.
+            this.jobName = jobName;
+        return retVal;
     }
 
     /**
@@ -137,11 +143,12 @@ public abstract class FpkmReporter implements AutoCloseable {
     /**
      * Read the meta-data file to get the JobData objects.
      *
-     * @param in	input stream for meta-data file
+     * @param in			input stream for meta-data file
+     * @param abridgeFlag 	if specified, suspicious samples will be skipped
      *
      * @throws IOException
      */
-    public void readMeta(InputStream in) throws IOException {
+    public void readMeta(InputStream in, boolean abridgeFlag) throws IOException {
         this.data = new RnaData();
         try (TabbedLineReader reader = new TabbedLineReader(in)) {
             for (TabbedLineReader.Line line : reader) {
@@ -149,7 +156,9 @@ public abstract class FpkmReporter implements AutoCloseable {
                 double production = computeDouble(line.get(1)) / 1000.0;
                 double density = computeDouble(line.get(2));
                 String oldName = line.get(3);
-                this.data.addJob(jobName, production, density, oldName);
+                boolean suspicious = line.getFlag(5);
+                if (! suspicious || ! abridgeFlag)
+                    this.data.addJob(jobName, production, density, oldName, suspicious);
             }
         }
         log.info("{} samples found in meta-data file.", this.data.size());

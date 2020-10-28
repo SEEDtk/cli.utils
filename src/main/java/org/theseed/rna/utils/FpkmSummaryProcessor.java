@@ -45,6 +45,7 @@ import org.theseed.utils.BaseProcessor;
  * --workDir	work directory for temporary files
  * --normalize	if specified, RNA features will be removed, and the FPKM numbers will be normalized to TPMs
  * --save		if specified, the name of a file to contain a binary version of the output
+ * --abridged	if specified, suspicious samples will not be included in the output
  *
  * @author Bruce Parrello
  *
@@ -75,6 +76,10 @@ public class FpkmSummaryProcessor extends BaseProcessor implements FpkmReporter.
     @Option(name = "-i", aliases = { "--input" }, metaVar = "meta.tbl", usage = "tab-delimited file of metadata (if not STDIN")
     private File inFile;
 
+    /** if specified, suspicious samples will be skipped */
+    @Option(name = "--abridged", usage = "skip suspicious samples")
+    private boolean abridgeFlag;
+
     /** optional save file */
     @Option(name = "--save", metaVar = "rnaData.ser", usage = "if specified, a file in which to save a binary version of the RNA data")
     private File saveFile;
@@ -102,6 +107,7 @@ public class FpkmSummaryProcessor extends BaseProcessor implements FpkmReporter.
         this.inFile = null;
         this.saveFile = null;
         this.normalizeFlag = false;
+        this.abridgeFlag = false;
     }
 
     @Override
@@ -121,11 +127,11 @@ public class FpkmSummaryProcessor extends BaseProcessor implements FpkmReporter.
         // Process the input.
         if (this.inFile == null) {
             log.info("Reading metadata from standard input.");
-            this.outStream.readMeta(System.in);
+            this.outStream.readMeta(System.in, this.abridgeFlag);
         } else {
             log.info("Reading metadata from {}.", this.inFile);
             try (FileInputStream inStream = new FileInputStream(this.inFile)) {
-                this.outStream.readMeta(inStream);
+                this.outStream.readMeta(inStream, this.abridgeFlag);
             }
         }
         return true;
@@ -152,57 +158,61 @@ public class FpkmSummaryProcessor extends BaseProcessor implements FpkmReporter.
                     if (jobName == null)
                         log.warn("Skipping non-tracking file {}.", fpkmFile.getName());
                     else {
-                        // Parse the file header.
-                        log.info("Reading FPKM file for sample {}.", jobName);
-                        int fidCol = fpkmStream.findField("tracking_id");
-                        int locCol = fpkmStream.findField("locus");
-                        int weightCol = fpkmStream.findField("FPKM");
                         // Register the job name.
-                        this.outStream.startJob(jobName);
-                        // Count the records read.
-                        int count = 1;
-                        // Read the data lines.
-                        for (TabbedLineReader.Line line : fpkmStream) {
-                            count++;
-                            // Check the weight.
-                            double weight = line.getDouble(weightCol);
-                            if (weight > 0.0) {
-                                // Get the target feature.
-                                String fid = line.get(fidCol);
-                                Location loc = this.baseGenome.computeLocation(line.get(locCol));
-                                Feature feat = this.baseGenome.getFeature(fid);
-                                boolean exactHit = (feat != null);
-                                // At this point, we either have a location or a feature.  If the feature is missing
-                                // we have NULL.  If the location is invalid (less likely), we also have NULL.  If
-                                // there is no feature, we use the location to find one.
-                                if (feat == null && loc == null)
-                                    log.error("Record {} skipped-- no feature and invalid location.", count);
-                                else {
-                                    // Get the location of the feature if the location was invalid.
-                                    if (loc == null)
-                                        loc = feat.getLocation();
-                                    // This will hold a neighboring feature.
-                                    Feature neighbor = null;
-                                    if (feat == null) {
-                                        // Find the closest feature to this location.
-                                        Feature locus = new Feature("", "", loc);
-                                        feat = this.featuresByLocation.ceiling(locus);
-                                        if (badContig(loc, feat)) {
-                                            // Nothing on the contig, blank the result.
-                                            feat = null;
+                        boolean ok = this.outStream.startJob(jobName);
+                        if (! ok)
+                            log.info("Skipping suppressed sample {}.", jobName);
+                        else {
+                            // Parse the file header.
+                            log.info("Reading FPKM file for sample {}.", jobName);
+                            int fidCol = fpkmStream.findField("tracking_id");
+                            int locCol = fpkmStream.findField("locus");
+                            int weightCol = fpkmStream.findField("FPKM");
+                            // Count the records read.
+                            int count = 1;
+                            // Read the data lines.
+                            for (TabbedLineReader.Line line : fpkmStream) {
+                                count++;
+                                // Check the weight.
+                                double weight = line.getDouble(weightCol);
+                                if (weight > 0.0) {
+                                    // Get the target feature.
+                                    String fid = line.get(fidCol);
+                                    Location loc = this.baseGenome.computeLocation(line.get(locCol));
+                                    Feature feat = this.baseGenome.getFeature(fid);
+                                    boolean exactHit = (feat != null);
+                                    // At this point, we either have a location or a feature.  If the feature is missing
+                                    // we have NULL.  If the location is invalid (less likely), we also have NULL.  If
+                                    // there is no feature, we use the location to find one.
+                                    if (feat == null && loc == null)
+                                        log.error("Record {} skipped-- no feature and invalid location.", count);
+                                    else {
+                                        // Get the location of the feature if the location was invalid.
+                                        if (loc == null)
+                                            loc = feat.getLocation();
+                                        // This will hold a neighboring feature.
+                                        Feature neighbor = null;
+                                        if (feat == null) {
+                                            // Find the closest feature to this location.
+                                            Feature locus = new Feature("", "", loc);
+                                            feat = this.featuresByLocation.ceiling(locus);
+                                            if (badContig(loc, feat)) {
+                                                // Nothing on the contig, blank the result.
+                                                feat = null;
+                                            }
                                         }
-                                    }
-                                    if (feat == null) {
-                                        log.error("Record {} skipped-- cannot find anchoring feature.", count);
-                                    } else {
-                                        // Here we have an actual feature.  Look for a neighbor.
-                                        neighbor = this.featuresByLocation.lower(feat);
-                                        if (badContig(loc, neighbor)) {
-                                            // Nothing on the same contig, blank the result.
-                                            neighbor = null;
+                                        if (feat == null) {
+                                            log.error("Record {} skipped-- cannot find anchoring feature.", count);
+                                        } else {
+                                            // Here we have an actual feature.  Look for a neighbor.
+                                            neighbor = this.featuresByLocation.lower(feat);
+                                            if (badContig(loc, neighbor)) {
+                                                // Nothing on the same contig, blank the result.
+                                                neighbor = null;
+                                            }
+                                            // Record this result.
+                                            this.outStream.recordHit(feat, exactHit, neighbor, weight);
                                         }
-                                        // Record this result.
-                                        this.outStream.recordHit(feat, exactHit, neighbor, weight);
                                     }
                                 }
                             }
