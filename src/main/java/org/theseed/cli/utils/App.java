@@ -11,6 +11,7 @@ import org.theseed.utils.BaseProcessor;
  *
  * fpkm			run jobs to convert FASTQ files to FPKM results
  * fpkmSummary	produce a summary file from FPKM results
+ * fpkmAll		generate all of the standard RNA SEQ files
  */
 public class App
 {
@@ -27,6 +28,9 @@ public class App
             break;
         case "fpkmsummary" :
             processor = new FpkmSummaryProcessor();
+            break;
+        case "fpkmall" :
+            processor = new FpkmAllProcessor();
             break;
         default:
             throw new RuntimeException("Invalid command " + command);

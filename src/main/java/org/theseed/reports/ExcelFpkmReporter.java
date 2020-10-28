@@ -63,12 +63,16 @@ public class ExcelFpkmReporter extends FpkmReporter {
     private CellStyle alertStyle;
     /** normal style */
     private CellStyle numStyle;
+    /** main sheet name */
+    private String sheetName;
     /** default column width */
     private static int DEFAULT_WIDTH = 10 * 256 + 128;
     /** function column width */
     private static int FUNCTION_WIDTH = 20 * 256;
     /** format for feature links */
     private static final String FEATURE_VIEW_LINK = "https://www.patricbrc.org/view/Feature/%s";
+    /** index of first sample column */
+    private static final int SAMP_COL_0 = 5;
 
     /**
      * Construct the reporter for the specified output stream and controlling processor.
@@ -79,8 +83,9 @@ public class ExcelFpkmReporter extends FpkmReporter {
     public ExcelFpkmReporter(OutputStream output, IParms processor) {
         // Save the output stream.
         this.outStream = output;
-        // Save the PATRIC workspace input directory name.
+        // Save the PATRIC workspace input directory name and the worksheet name.
         this.inDir = processor.getInDir();
+        this.sheetName = processor.getSheetName();
     }
 
     @Override
@@ -90,22 +95,27 @@ public class ExcelFpkmReporter extends FpkmReporter {
         this.nSamples = actualSamples.size();
         this.samples = actualSamples;
         // Create the workbook and the sheet.
-        this.workbook = new XSSFWorkbook();
-        this.worksheet = this.workbook.createSheet("FPKM");
+        Workbook myWorkbook = new XSSFWorkbook();
+        this.worksheet = myWorkbook.createSheet(this.sheetName);
         // Get a data formatter.
-        DataFormat format = this.workbook.createDataFormat();
+        DataFormat format = myWorkbook.createDataFormat();
         short fmt = format.getFormat("###0.0000");
         // Create the header style.
-        this.headStyle = this.workbook.createCellStyle();
+        this.headStyle = myWorkbook.createCellStyle();
         this.headStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
         this.headStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
         // Create the number style.
-        this.numStyle = this.workbook.createCellStyle();
+        this.numStyle = myWorkbook.createCellStyle();
         this.numStyle.setDataFormat(fmt);
         // Create the alert style.
-        this.alertStyle = this.workbook.createCellStyle();
+        this.alertStyle = myWorkbook.createCellStyle();
         this.alertStyle.setFillForegroundColor(IndexedColors.ROSE.getIndex());
         this.alertStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        // Create the totals array.
+        this.totals = new double[this.nSamples];
+        Arrays.fill(this.totals, 0.0);
+        // Save the workbook so we know we're initialized.
+        this.workbook = myWorkbook;
         // Now we add the column headers.
         this.rowNum = 0;
         this.addRow();
@@ -114,12 +124,13 @@ public class ExcelFpkmReporter extends FpkmReporter {
         this.setStyledCell(2, "bNumber", this.headStyle);
         this.setStyledCell(3, "function", this.headStyle);
         this.setStyledCell(4, "neighbor", this.headStyle);
-        int colNum = 3;
+        int colNum = SAMP_COL_0;
         // After the header columns, there is one column per sample.  Each is hyperlinked to its samstat page.
         for (RnaData.JobData sample : actualSamples) {
-            Cell cell = this.setStyledCell(++colNum, sample.getName(), headStyle);
+            Cell cell = this.setStyledCell(colNum, sample.getName(), headStyle);
             String url = this.getSamstatLink(sample.getName());
             this.setHref(cell, url);
+            colNum++;
         }
         // Now we have the metadata rows.
         this.addRow();
@@ -134,9 +145,6 @@ public class ExcelFpkmReporter extends FpkmReporter {
         this.setStyledCell(0, "OD", this.headStyle);
         double[] optValues = actualSamples.stream().mapToDouble(x -> x.getOpticalDensity()).toArray();
         this.fillMetaRow(optValues);
-        // Create the totals array.
-        this.totals = new double[this.nSamples];
-        Arrays.fill(this.totals, 0.0);
     }
 
     /**
@@ -145,9 +153,9 @@ public class ExcelFpkmReporter extends FpkmReporter {
      * @param values	array of meta-data values
      */
     private void fillMetaRow(String[] values) {
-        int colNum = 3;
+        int colNum = SAMP_COL_0;
         for (String v : values)
-            this.setTextCell(++colNum, v);
+            this.setTextCell(colNum++, v);
     }
 
     /**
@@ -156,10 +164,11 @@ public class ExcelFpkmReporter extends FpkmReporter {
      * @param values	array of meta-data values
      */
     private void fillMetaRow(double[] values) {
-        int colNum = 3;
+        int colNum = SAMP_COL_0;
         for (double v : values) {
             if (! Double.isNaN(v))
-                this.setNumCell(++colNum, v);
+                this.setNumCell(colNum, v);
+            colNum++;
         }
     }
 
@@ -178,7 +187,7 @@ public class ExcelFpkmReporter extends FpkmReporter {
      * @param url	URL to link from the cell
      */
     protected void setHref(Cell cell, String url) {
-        final Hyperlink href = workbook.getCreationHelper().createHyperlink(HyperlinkType.URL);
+        final Hyperlink href = this.workbook.getCreationHelper().createHyperlink(HyperlinkType.URL);
         href.setAddress(url);
         cell.setHyperlink(href);
     }
@@ -261,10 +270,9 @@ public class ExcelFpkmReporter extends FpkmReporter {
         cell = this.setTextCell(4, neighborId);
         this.setHref(cell, neighbor);
         // Now we run through the weights.
-        int colNum = 4;
+        int colNum = SAMP_COL_0;
         for (int i = 0; i < this.nSamples; i++) {
             RnaData.Weight weight = row.getWeight(i);
-            colNum++;
             if (weight == null)
                 this.setTextCell(colNum, "");
             else {
@@ -275,6 +283,7 @@ public class ExcelFpkmReporter extends FpkmReporter {
                 // Update the totals.
                 this.totals[i] += weight.getWeight();
             }
+            colNum++;
         }
     }
 
@@ -306,7 +315,7 @@ public class ExcelFpkmReporter extends FpkmReporter {
                 this.worksheet.autoSizeColumn(2);
                 this.worksheet.setColumnWidth(3, FUNCTION_WIDTH);
                 this.worksheet.autoSizeColumn(4);
-                for (int i = 5; i < this.nSamples + 5; i++)
+                for (int i = SAMP_COL_0; i < this.nSamples + SAMP_COL_0; i++)
                     this.worksheet.setColumnWidth(i, DEFAULT_WIDTH);
                 // Create the totals page.
                 log.info("Building totals page.");

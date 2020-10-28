@@ -6,9 +6,12 @@ package org.theseed.rna.utils;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import java.util.TreeSet;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
@@ -26,7 +29,8 @@ import org.theseed.utils.BaseProcessor;
  * be used later to build a web page.
  *
  * The positional parameters are the name of the genome file for the aligned genome, the name of the input PATRIC directory,
- * and the name of the relevant workspace.
+ * the name of the relevant workspace, and the name of the output file.  If the input PATRIC directory has already been
+ * copied to the local hard drive, the directory name on the local drive can be specified instead.
  *
  * The standard input should contain a tab-delimited metadata file describing each sample.  The file should contain the
  * sample ID in the first column, the production level in the second (in mg/l), the optical density in the third, and the
@@ -46,6 +50,8 @@ import org.theseed.utils.BaseProcessor;
  * --normalize	if specified, RNA features will be removed, and the FPKM numbers will be normalized to TPMs
  * --save		if specified, the name of a file to contain a binary version of the output
  * --abridged	if specified, suspicious samples will not be included in the output
+ * --local		if specified, a local directory containing the FPKM input files
+ *
  *
  * @author Bruce Parrello
  *
@@ -61,6 +67,8 @@ public class FpkmSummaryProcessor extends BaseProcessor implements FpkmReporter.
     private FpkmReporter outStream;
     /** features sorted by location */
     private TreeSet<Feature> featuresByLocation;
+    /** output file stream */
+    private FileOutputStream outFileStream;
 
     // COMMAND-LINE OPTIONS
 
@@ -77,7 +85,7 @@ public class FpkmSummaryProcessor extends BaseProcessor implements FpkmReporter.
     private File inFile;
 
     /** if specified, suspicious samples will be skipped */
-    @Option(name = "--abridged", usage = "skip suspicious samples")
+    @Option(name = "--abridge", aliases = { "--abridged" }, usage = "skip suspicious samples")
     private boolean abridgeFlag;
 
     /** optional save file */
@@ -85,20 +93,40 @@ public class FpkmSummaryProcessor extends BaseProcessor implements FpkmReporter.
     private File saveFile;
 
     /** normalize */
-    @Option(name = "--normalize", usage = "if specified, FPKMs will be converted to TPMs")
+    @Option(name = "--normalize", aliases = { "--normalized" }, usage = "if specified, FPKMs will be converted to TPMs")
     private boolean normalizeFlag;
 
+    /** local file directory */
+    @Option(name = "--local", usage = "if specified, a directory containing local copies of the FPKM gene-tracking files")
+    private File localDir;
+
     /** GTO file for aligned genome */
-    @Argument(index = 0, metaVar = "base.gto", usage = "GTO file for the base genome")
+    @Argument(index = 0, metaVar = "base.gto", usage = "GTO file for the base genome", required = true)
     private File baseGenomeFile;
 
     /** PATRIC directory containing the FPKM files */
-    @Argument(index = 1, metaVar = "user@patricbrc.org/inputDirectory", usage = "PATRIC input directory for FPKM tracking files")
+    @Argument(index = 1, metaVar = "user@patricbrc.org/inputDirectory", usage = "PATRIC input directory for FPKM tracking files", required = true)
     private String inDir;
 
     /** controlling workspace name */
-    @Argument(index = 2, metaVar = "user@patricbrc.org", usage = "controlling workspace")
+    @Argument(index = 2, metaVar = "user@patricbrc.org", usage = "controlling workspace", required = true)
     private String workspace;
+
+    /** output file name */
+    @Argument(index = 3, metaVar = "output.txt", usage = "output file name", required = true)
+    private File outFile;
+
+    /**
+     * File name filter for gene-tracking files
+     */
+    private static class GeneFileFilter implements FilenameFilter {
+
+        @Override
+        public boolean accept(File dir, String name) {
+            return (StringUtils.endsWith(name, "_genes.fpkm"));
+        }
+
+    }
 
     @Override
     protected void setDefaults() {
@@ -108,6 +136,8 @@ public class FpkmSummaryProcessor extends BaseProcessor implements FpkmReporter.
         this.saveFile = null;
         this.normalizeFlag = false;
         this.abridgeFlag = false;
+        this.outFileStream = null;
+        this.localDir = null;
     }
 
     @Override
@@ -123,7 +153,11 @@ public class FpkmSummaryProcessor extends BaseProcessor implements FpkmReporter.
             throw new FileNotFoundException("Base genome file " + this.baseGenomeFile + " not found or unreadable.");
         this.baseGenome = new Genome(this.baseGenomeFile);
         // Create the reporter.
-        this.outStream = this.outFormat.create(System.out, this);
+        this.outFileStream = new FileOutputStream(this.outFile);
+        this.outStream = this.outFormat.create(this.outFileStream, this);
+        // Verify the local-file directory.
+        if (this.localDir != null && ! this.localDir.isDirectory())
+            throw new FileNotFoundException("Local-copy directory " + this.localDir + " is not found or invalid.");
         // Process the input.
         if (this.inFile == null) {
             log.info("Reading metadata from standard input.");
@@ -145,10 +179,17 @@ public class FpkmSummaryProcessor extends BaseProcessor implements FpkmReporter.
             this.featuresByLocation = new TreeSet<Feature>(new Feature.LocationComparator());
             for (Feature feat : this.baseGenome.getFeatures())
                 this.featuresByLocation.add(feat);
-            // Get local copies of the FPKM files.
-            log.info("Copying FPKM tracking files from {}.", this.inDir);
-            CopyTask copy = new CopyTask(this.workDir, this.workspace);
-            File[] fpkmFiles = copy.copyRemoteFolder(this.inDir + "/" + RnaJob.FPKM_DIR);
+            // Insure we have local copies of the FPKM files.
+            File[] fpkmFiles;
+            if (this.localDir != null) {
+                log.info("Locating FPKM tracking files in {}.", this.inDir);
+                fpkmFiles = this.localDir.listFiles(new GeneFileFilter());
+            } else {
+                log.info("Copying FPKM tracking files from {}.", this.inDir);
+                CopyTask copy = new CopyTask(this.workDir, this.workspace);
+                fpkmFiles = copy.copyRemoteFolder(this.inDir + "/" + RnaJob.FPKM_DIR);
+            }
+            log.info("{} files to process.", fpkmFiles.length);
             // Loop through the files.
             this.outStream.startReport();
             for (File fpkmFile : fpkmFiles) {
@@ -232,6 +273,7 @@ public class FpkmSummaryProcessor extends BaseProcessor implements FpkmReporter.
                 this.outStream.saveBinary(this.saveFile);
         } finally {
             this.outStream.close();
+            this.outFileStream.close();
         }
     }
 
@@ -248,6 +290,11 @@ public class FpkmSummaryProcessor extends BaseProcessor implements FpkmReporter.
     @Override
     public String getInDir() {
         return this.inDir;
+    }
+
+    @Override
+    public String getSheetName() {
+        return (this.normalizeFlag ? "TPM" : "FPKM");
     }
 
 }

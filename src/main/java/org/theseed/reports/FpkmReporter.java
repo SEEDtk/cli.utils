@@ -68,6 +68,11 @@ public abstract class FpkmReporter implements AutoCloseable {
          */
         public String getInDir();
 
+        /**
+         * @return the name to give to the main sheet
+         */
+        public String getSheetName();
+
     }
 
 
