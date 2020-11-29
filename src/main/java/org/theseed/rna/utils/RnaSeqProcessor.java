@@ -28,6 +28,7 @@ import org.theseed.cli.MkDirTask;
 import org.theseed.cli.StatusTask;
 import org.theseed.io.TabbedLineReader;
 import org.theseed.utils.BaseProcessor;
+import org.theseed.utils.ParseFailureException;
 
 /**
  * This command runs a directory of RNA sequence data.  This is a complicated process that involves multiple steps.  First, the
@@ -160,7 +161,7 @@ public class RnaSeqProcessor extends BaseProcessor {
     }
 
     @Override
-    protected boolean validateParms() throws IOException {
+    protected boolean validateParms() throws IOException, ParseFailureException {
         this.readPattern = Pattern.compile(this.readRegex);
         if (! this.workDir.isDirectory()) {
             log.info("Creating work directory {}.", this.workDir);
@@ -170,7 +171,7 @@ public class RnaSeqProcessor extends BaseProcessor {
             log.info("Temporary files will be stored in {}.", this.workDir);
         // Insure the task limit is reasonable.
         if (this.limit < 100)
-            throw new IllegalArgumentException("Invalid task limit.  The number should be enough to find all running tasks, and must be >= 100.");
+            throw new ParseFailureException("Invalid task limit.  The number should be enough to find all running tasks, and must be >= 100.");
         // Verify the base genome table.
         if (! this.baseFile.canRead())
             throw new FileNotFoundException("Base-genome file " + this.baseFile + " not found or unreadable.");
@@ -186,12 +187,12 @@ public class RnaSeqProcessor extends BaseProcessor {
         }
         // Verify the wait interval.
         if (this.wait < 0)
-            throw new IllegalArgumentException("Invalid wait interval " + Integer.toString(this.wait) + ". Must be >= 0.");
+            throw new ParseFailureException("Invalid wait interval " + Integer.toString(this.wait) + ". Must be >= 0.");
         // Convert the interval from minutes to milliseconds.
         this.waitInterval = wait * (60 * 1000);
         // Verify the task limit.
         if (this.maxTasks < 1)
-            throw new IllegalArgumentException("Maximum number of tasks must be > 0.");
+            throw new ParseFailureException("Maximum number of tasks must be > 0.");
         return true;
     }
 
