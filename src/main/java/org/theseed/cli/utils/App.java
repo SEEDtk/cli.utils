@@ -3,6 +3,7 @@ package org.theseed.cli.utils;
 import java.util.Arrays;
 
 import org.theseed.rna.utils.FpkmSummaryProcessor;
+import org.theseed.rna.utils.RnaCopyProcessor;
 import org.theseed.rna.utils.RnaSeqProcessor;
 import org.theseed.utils.BaseProcessor;
 
@@ -12,6 +13,7 @@ import org.theseed.utils.BaseProcessor;
  * fpkm			run jobs to convert FASTQ files to FPKM results
  * fpkmSummary	produce a summary file from FPKM results
  * fpkmAll		generate all of the standard RNA SEQ files
+ * rnaCopy		copy RNA read files into PATRIC for processing by the FPKM commands
  */
 public class App
 {
@@ -31,6 +33,9 @@ public class App
             break;
         case "fpkmall" :
             processor = new FpkmAllProcessor();
+            break;
+        case "rnaCopy" :
+            processor = new RnaCopyProcessor();
             break;
         default:
             throw new RuntimeException("Invalid command " + command);

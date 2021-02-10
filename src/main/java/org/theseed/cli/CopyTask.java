@@ -42,6 +42,16 @@ public class CopyTask extends CliTask {
      */
     public void copyRemoteFile(String sourceFile, String targetFile) {
         List<String> result = this.run("p3-cp", "ws:" + sourceFile, "ws:" + targetFile);
+        validateCopy(sourceFile, result);
+    }
+
+    /**
+     * Check the results of a copy operation.  If the copy failed a runtime exception will be thrown.
+     *
+     * @param sourceFile	full name of the source file
+     * @param result		results from the copy command
+     */
+    protected void validateCopy(String sourceFile, List<String> result) {
         // The command succeeds if it returns one line that begins with "Copy".
         if (result.size() == 0)
             throw new RuntimeException("PATRIC copy command for " + sourceFile + " failed with no response.");
@@ -50,6 +60,18 @@ public class CopyTask extends CliTask {
             throw new RuntimeException("Error in PATRIC copy: " + resultString);
         // Here the copy worked.  We can continue.
     }
+
+    /**
+     * Copy a local file to a workspace location.
+     *
+     * @param sourceFile		full name of the source file
+     * @param targetFile		full name of the target file
+     */
+    public void copyLocalFile(String sourceFile, String targetFile) {
+        List<String> result = this.run("p3-cp", sourceFile, "ws:" + targetFile);
+        validateCopy(sourceFile, result);
+    }
+
 
     /**
      * Copy a remote directory to a temporary local location and return a file list.
