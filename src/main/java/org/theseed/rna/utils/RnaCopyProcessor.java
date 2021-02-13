@@ -64,7 +64,7 @@ public class RnaCopyProcessor extends BaseProcessor {
     /** array of filename patters for input */
     private String[] FASTQ_PATTERNS = new String[] { "fastq" };
     /** pattern for getting the sample ID from a fastq file name */
-    private final static Pattern SAMPLE_FASTQ_FILE = Pattern.compile("(\\S+)(_R[12]_\\d+\\.fastq)");
+    public final static Pattern SAMPLE_FASTQ_FILE = Pattern.compile("(\\S+)(_R[12]_\\d+\\.fastq)");
 
     // COMMAND-LINE OPTIONS
 

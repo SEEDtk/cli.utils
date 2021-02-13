@@ -14,6 +14,7 @@ import org.theseed.genome.Feature;
 import org.theseed.io.TabbedLineReader;
 import org.theseed.rna.RnaData;
 import org.theseed.rna.RnaData.JobData;
+import org.theseed.rna.utils.SampleMeta;
 
 /**
  * This is the base class for the FPKM summary report.  This class is responsible for converting the columnar inputs to
@@ -157,28 +158,14 @@ public abstract class FpkmReporter implements AutoCloseable {
         this.data = new RnaData();
         try (TabbedLineReader reader = new TabbedLineReader(in)) {
             for (TabbedLineReader.Line line : reader) {
-                String jobName = line.get(0);
-                double production = computeDouble(line.get(1)) / 1000.0;
-                double density = computeDouble(line.get(2));
-                String oldName = line.get(3);
-                boolean suspicious = line.getFlag(5);
-                if (! suspicious || ! abridgeFlag)
-                    this.data.addJob(jobName, production, density, oldName, suspicious);
+                SampleMeta sampleMeta = new SampleMeta(line);
+                if (! sampleMeta.isSuspicious() || ! abridgeFlag)
+                    this.data.addJob(sampleMeta.getSampleId(), sampleMeta.getProduction() / 1000.0,
+                            sampleMeta.getDensity(), sampleMeta.getOldId(),
+                            sampleMeta.isSuspicious());
             }
         }
         log.info("{} samples found in meta-data file.", this.data.size());
-    }
-
-    /**
-     * @return a string as a double, converting the empty string into NaN
-     *
-     * @param string	input string to parse
-     */
-    private double computeDouble(String string) {
-        double retVal = Double.NaN;
-        if (! string.isEmpty())
-            retVal = Double.valueOf(string);
-        return retVal;
     }
 
     /**

@@ -1,7 +1,7 @@
 /**
  *
  */
-package org.theseed.cli.utils;
+package org.theseed.rna.utils;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -14,8 +14,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.cli.CopyTask;
 import org.theseed.io.LineReader;
-import org.theseed.rna.utils.FpkmSummaryProcessor;
-import org.theseed.rna.utils.RnaJob;
 import org.theseed.utils.BaseProcessor;
 
 /**
