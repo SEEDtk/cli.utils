@@ -132,8 +132,12 @@ public class PerlConverter {
     protected String parseString() {
         String retVal = null;
         if (this.current() != '\'') {
-            // Here we have an undef.  Skip to the comma.
-            while(this.current() != ',') this.pos++;
+            // Here we have an undef.  Skip to the delimiter.
+            char chr = this.current();
+            while(chr != ',' && chr != ' ') {
+                this.pos++;
+                chr = this.current();
+            }
         } else {
             // Here we have a real string.  We scan for a closing quote.  The only tricky part
             // is that there may be an escaped quote in the middle.

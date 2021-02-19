@@ -49,4 +49,5 @@ public class TestPerlConverter extends TestCase {
         assertThat(parsed.get("id"), equalTo("705026"));
         assertThat(parsed.get("submit_time"), equalTo("C"));
     }
+
 }

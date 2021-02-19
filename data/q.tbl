@@ -6,7 +6,6 @@ $VAR1 = {
                         'start_time' => '2020-10-06 22:21:44',
                         'elapsed_time' => '',
                         'user_id' => 'rastuser25@patricbrc.org',
-                        'parent_id' => undef,
                         'workspace' => undef,
                         'completed_time' => '2020-10-06 22:44:55',
                         'parameters' => {
@@ -27,7 +26,8 @@ $VAR1 = {
                                         },
                         'id' => '705026',
                         'status' => 'completed',
-                        'submit_time' => 'C'
+                        'submit_time' => 'C',
+                        'parent_id' => undef
         };
 705026	RNASeq		completed	C	2020-10-06 22:44:55
 705025	FastqUtils		completed	C	2020-10-06 22:16:37
