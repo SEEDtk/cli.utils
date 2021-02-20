@@ -14,6 +14,7 @@ import java.util.regex.Matcher;
 
 import org.apache.commons.io.FileUtils;
 import org.kohsuke.args4j.Argument;
+import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.io.TabbedLineReader;
@@ -23,7 +24,7 @@ import org.theseed.utils.ParseFailureException;
 /**
  * This command updates the sampleMeta.tbl file with new samples.  The "rna.production.tbl" file is used to get production and growth
  * data and the suspicion flag, and the "progress.txt" file is used to get the old and new names for the new samples.  If a sample
- * already exists, it's sampleMeta record will be updated.
+ * already exists, its sampleMeta record will be updated.
  *
  * The basic strategy is to build a descriptor for each sample and then write it out at the end.  Each of the input files is read
  * individually and the samples updated accordingly.
@@ -34,6 +35,9 @@ import org.theseed.utils.ParseFailureException;
  *
  * -h	display command-line usage
  * -v	show more detailed progress messages
+ *
+ * --prod	id specified, the name of a big production table; the growth and production data will be copied for samples that do
+ * 			not already have it
  *
  * @author Bruce Parrello
  *
@@ -56,6 +60,10 @@ public class SampleMetaProcessor extends BaseProcessor {
 
     // COMMAND-LINE OPTIONS
 
+    /** optional production file */
+    @Option(name = "--prod", metaVar = "big_production_table.tsv", usage = "big production table containing production and growth data")
+    private File bigProdFile;
+
     /** name of the directory containing all the relevant files */
     @Argument(index = 0, metaVar = "dataDir", usage = "directory containing all the files")
     private File dataDir;
@@ -77,6 +85,8 @@ public class SampleMetaProcessor extends BaseProcessor {
         this.prodFile = new File(this.dataDir, "rna.production.tbl");
         if (! this.prodFile.canRead())
             throw new FileNotFoundException("Production/growth file " + this.prodFile + " is not found or unreadable.");
+        if (this.bigProdFile != null && ! this.bigProdFile.canRead())
+            throw new FileNotFoundException("Big production table file " + this.bigProdFile + " is not found or unreadable.");
         return true;
     }
 
@@ -119,7 +129,7 @@ public class SampleMetaProcessor extends BaseProcessor {
             }
             log.info("{} new samples found in {} records.", found, count);
         }
-        // Finally, we read the production file to get the production and growth numbers.
+        // Now, we read the production file to get the production and growth numbers.
         log.info("Reading production and growth data from {}.", this.prodFile);
         try (TabbedLineReader prodReader = new TabbedLineReader(this.prodFile)) {
             int count = 0;
@@ -139,6 +149,28 @@ public class SampleMetaProcessor extends BaseProcessor {
                 }
             }
             log.info("{} production values updated.", count);
+        }
+        // Finally, we read the big production table to get defaults.
+        if (this.bigProdFile != null) {
+            log.info("Reading backup production and growth data from {}.", this.bigProdFile);
+            try (TabbedLineReader bigProdReader = new TabbedLineReader(this.bigProdFile)) {
+                int count = 0;
+                int idCol = bigProdReader.findField("sample");
+                int growthCol = bigProdReader.findField("growth");
+                int prodCol = bigProdReader.findField("thr_production");
+                for (TabbedLineReader.Line line : bigProdReader) {
+                    String sampleId = line.get(idCol);
+                    SampleMeta sampleMeta = this.sampleMap.get(sampleId);
+                    if (sampleMeta != null) {
+                        double growth = line.getDouble(growthCol);
+                        // Note we have to scale from g/L to mg/L for production.
+                        double prod = line.getDouble(prodCol) * 1000;
+                        sampleMeta.fillPerformanceData(growth, prod);
+                        count++;
+                    }
+                }
+                log.info("{} growth/production defaults found.", count);
+            }
         }
         // Everything is ready.  Backup the output file.
         FileUtils.copyFile(this.outFile, new File(this.dataDir, "sampleMeta.bak.tbl"));

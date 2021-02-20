@@ -87,6 +87,19 @@ public class SampleMeta {
     }
 
     /**
+     * Store new production and density values if the current ones are unspecified.
+     *
+     * @param newGrowth		new density value
+     * @param newProd		new production value
+     */
+    public void fillPerformanceData(double newGrowth, double newProd) {
+        if (Double.isNaN(this.density))
+            this.density = newGrowth;
+        if (Double.isNaN(this.production))
+            this.production = newProd;
+    }
+
+    /**
      * @return TRUE if this sample is suspicious
      */
     public boolean isSuspicious() {
