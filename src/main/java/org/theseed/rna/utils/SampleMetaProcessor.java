@@ -57,6 +57,8 @@ public class SampleMetaProcessor extends BaseProcessor {
     private File progressFile;
     /** name of production file */
     private File prodFile;
+    /** list of rep IDs to try */
+    private static final String[] REP_SUFFIXES = new String[] { "", "_rep0", "_rep1", "rep2", "_rep3" };
 
     // COMMAND-LINE OPTIONS
 
@@ -160,13 +162,15 @@ public class SampleMetaProcessor extends BaseProcessor {
                 int prodCol = bigProdReader.findField("thr_production");
                 for (TabbedLineReader.Line line : bigProdReader) {
                     String sampleId = line.get(idCol);
-                    SampleMeta sampleMeta = this.sampleMap.get(sampleId);
-                    if (sampleMeta != null) {
-                        double growth = line.getDouble(growthCol);
-                        // Note we have to scale from g/L to mg/L for production.
-                        double prod = line.getDouble(prodCol) * 1000;
-                        sampleMeta.fillPerformanceData(growth, prod);
-                        count++;
+                    for (String repSuffix : REP_SUFFIXES) {
+                        SampleMeta sampleMeta = this.sampleMap.get(sampleId + repSuffix);
+                        if (sampleMeta != null) {
+                            double growth = line.getDouble(growthCol);
+                            // Note we have to scale from g/L to mg/L for production.
+                            double prod = line.getDouble(prodCol) * 1000;
+                            sampleMeta.fillPerformanceData(growth, prod);
+                            count++;
+                        }
                     }
                 }
                 log.info("{} growth/production defaults found.", count);

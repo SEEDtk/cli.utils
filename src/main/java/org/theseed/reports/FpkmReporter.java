@@ -7,10 +7,16 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.genome.Feature;
+import org.theseed.io.LineReader;
 import org.theseed.io.TabbedLineReader;
 import org.theseed.rna.RnaData;
 import org.theseed.rna.RnaData.JobData;
@@ -28,7 +34,10 @@ public abstract class FpkmReporter implements AutoCloseable {
     // FIELDS
     /** logging facility */
     protected static Logger log = LoggerFactory.getLogger(FpkmReporter.class);
-
+    /** parsing pattern for samstat processing data (reads, size, creation) */
+    protected static final Pattern PROCESSING_PATTERN = Pattern.compile("<p>(\\d+) reads, size:(\\d+) bytes, created (\\S+)");
+    /** parsing patter for samstat quality data (percent >= 30% good) */
+    protected static final Pattern QUALITY_PATTERN = Pattern.compile("MAPQ >= 30</td> <td>\\d+\\.\\d+</td> <td>(\\d+\\.\\d+)");
     /** repository of collected data */
     private RnaData data;
     /** name of the current sample */
@@ -166,6 +175,36 @@ public abstract class FpkmReporter implements AutoCloseable {
             }
         }
         log.info("{} samples found in meta-data file.", this.data.size());
+    }
+
+    /**
+     * Read the samstat file to set the job quality/history data.
+     *
+     * @param jobName		name of the relevant job
+     * @param samstatFile	samStat HTML file containing the quality and history data
+     *
+     * @throws IOException
+     */
+    public void readSamStat(String jobName, File samStatFile) throws IOException {
+        // Find the job descriptor.
+        RnaData.JobData job = this.data.getJob(jobName);
+        // Read the samstat file.
+        String htmlString = StringUtils.join(LineReader.readList(samStatFile), " ");
+        // Get the processing data.
+        Matcher m = PROCESSING_PATTERN.matcher(htmlString);
+        if (! m.find())
+            log.warn("WARNING: no creation data for {}.", jobName);
+        else {
+            job.setReadCount(Integer.valueOf(m.group(1)));
+            job.setBaseCount(Long.valueOf(m.group(2)));
+            job.setProcessingDate(LocalDate.parse(m.group(3)));
+        }
+        // Get the quality percentage.
+        m = QUALITY_PATTERN.matcher(htmlString);
+        if (! m.find())
+            log.warn("WARNING: no quality percentage for {}.", jobName);
+        else
+            job.setQuality(Double.valueOf(m.group(1)));
     }
 
     /**

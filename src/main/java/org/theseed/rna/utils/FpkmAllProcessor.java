@@ -30,6 +30,8 @@ import org.theseed.utils.BaseProcessor;
  * -v	show more detailed progress messages
  *
  * --workDir	work directory for temporary files
+ * --localDir	local directory containing the FPKM and samstat files; if specified, the files will be taken from here
+ * 				instead of being downloaded
  *
  * @author Bruce Parrello
  *
@@ -39,12 +41,18 @@ public class FpkmAllProcessor extends BaseProcessor {
     // FIELDS
     /** logging facility */
     protected static Logger log = LoggerFactory.getLogger(FpkmAllProcessor.class);
+    /** directory containing the FPKM and samstat files */
+    private File fpkmDir;
 
     // COMMAND-LINE OPTIONS
 
     /** work directory for temporary files */
     @Option(name = "--workDir", metaVar = "workDir", usage = "work directory for temporary files")
     private File workDir;
+
+    /** local directory containing data files */
+    @Option(name = "--localDir", metaVar = "localDir", usage = "local directory containing FPKM and samstat files from PATRIC")
+    private File localDir;
 
     /** input file name */
     @Argument(index = 0, metaVar = "parms.tbl", usage = "input file containing command specifications", required = true)
@@ -61,6 +69,7 @@ public class FpkmAllProcessor extends BaseProcessor {
     @Override
     protected void setDefaults() {
         this.workDir = new File(System.getProperty("user.dir"), "Temp");
+        this.localDir = null;
     }
 
     @Override
@@ -73,20 +82,29 @@ public class FpkmAllProcessor extends BaseProcessor {
             log.info("Temporary files will be stored in {}.", this.workDir);
         if (! this.inFile.canRead())
             throw new FileNotFoundException("Input file " + this.inFile + " is not found or unreadable.");
+        if (this.localDir != null && ! this.localDir.isDirectory())
+            throw new FileNotFoundException("Local directory " + this.localDir + " is not found or invalid.");
         return true;
     }
 
     @Override
     protected void runCommand() throws Exception {
-        // Insure we have an empty space for the work files.
-        File fpkmDir = new File(this.workDir, RnaJob.FPKM_DIR);
-        if (fpkmDir.exists())
-            FileUtils.forceDelete(fpkmDir);
-        // Get a directory of the input files.
-        log.info("Copying FPKM tracking files from {}.", this.inDir);
-        CopyTask copy = new CopyTask(this.workDir, this.workspace);
-        File[] fpkmFiles = copy.copyRemoteFolder(this.inDir + "/" + RnaJob.FPKM_DIR);
-        log.info("{} files copied into {}.", fpkmFiles.length, fpkmDir);
+        // Determine where the FPKM and samstat files are.
+        if (this.localDir != null) {
+            this.fpkmDir = this.localDir;
+            log.info("Using FPKM tracking data downloaded to {}.", this.localDir);
+        } else {
+            // Insure we have an empty space for the work files.
+            File fpkmDir = new File(this.workDir, RnaJob.FPKM_DIR);
+            if (fpkmDir.exists())
+                FileUtils.forceDelete(fpkmDir);
+            // Get a directory of the input files.
+            log.info("Copying FPKM tracking files from {}.", this.inDir);
+            CopyTask copy = new CopyTask(this.workDir, this.workspace);
+            File[] fpkmFiles = copy.copyRemoteFolder(this.inDir + "/" + RnaJob.FPKM_DIR);
+            log.info("{} files copied into {}.", fpkmFiles.length, fpkmDir);
+            this.fpkmDir = fpkmDir;
+        }
         // Now open the input file and read the commands.
         try (LineReader commandStream = new LineReader(this.inFile)) {
             for (String[] parms : commandStream.new Section(null)) {
@@ -94,7 +112,7 @@ public class FpkmAllProcessor extends BaseProcessor {
                 // Fix the $DIR parameter.
                 for (int i = 0; i < parms.length; i++) {
                     if (parms[i].contentEquals("$DIR"))
-                        parms[i] = fpkmDir.getPath();
+                        parms[i] = this.fpkmDir.getPath();
                 }
                 FpkmSummaryProcessor processor = new FpkmSummaryProcessor();
                 if (processor.parseCommand(parms))

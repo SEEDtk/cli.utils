@@ -182,28 +182,30 @@ public class FpkmSummaryProcessor extends BaseProcessor implements FpkmReporter.
             // Insure we have local copies of the FPKM files.
             File[] fpkmFiles;
             if (this.localDir != null) {
-                log.info("Locating FPKM tracking files in {}.", this.inDir);
+                log.info("Locating FPKM tracking files in {}.", this.localDir);
                 fpkmFiles = this.localDir.listFiles(new GeneFileFilter());
             } else {
-                log.info("Copying FPKM tracking files from {}.", this.inDir);
-                CopyTask copy = new CopyTask(this.workDir, this.workspace);
-                fpkmFiles = copy.copyRemoteFolder(this.inDir + "/" + RnaJob.FPKM_DIR);
+                File tempDir = copyFpkmFiles();
+                fpkmFiles = tempDir.listFiles(new GeneFileFilter());
             }
             log.info("{} files to process.", fpkmFiles.length);
             // Loop through the files.
             this.outStream.startReport();
             for (File fpkmFile : fpkmFiles) {
-                try (TabbedLineReader fpkmStream = new TabbedLineReader(fpkmFile)) {
-                    // Get the sample ID for this file.
-                    String jobName = RnaJob.Phase.COPY.checkSuffix(fpkmFile.getName());
-                    if (jobName == null)
-                        log.warn("Skipping non-tracking file {}.", fpkmFile.getName());
+                // Get the sample ID for this file.
+                String jobName = RnaJob.Phase.COPY.checkSuffix(fpkmFile.getName());
+                if (jobName == null)
+                    log.warn("Skipping non-tracking file {}.", fpkmFile.getName());
+                else {
+                    // Register the job name.
+                    boolean ok = this.outStream.startJob(jobName);
+                    if (! ok)
+                        log.info("Skipping suppressed sample {}.", jobName);
                     else {
-                        // Register the job name.
-                        boolean ok = this.outStream.startJob(jobName);
-                        if (! ok)
-                            log.info("Skipping suppressed sample {}.", jobName);
-                        else {
+                        File samstatFile = new File(fpkmFile.getParentFile(), jobName + ".samstat.html");
+                        log.info("Reading samstat information from {}.", samstatFile);
+                        this.outStream.readSamStat(jobName, samstatFile);
+                        try (TabbedLineReader fpkmStream = new TabbedLineReader(fpkmFile)) {
                             // Parse the file header.
                             log.info("Reading FPKM file for sample {}.", jobName);
                             int fidCol = fpkmStream.findField("tracking_id");
@@ -275,6 +277,20 @@ public class FpkmSummaryProcessor extends BaseProcessor implements FpkmReporter.
             this.outStream.close();
             this.outFileStream.close();
         }
+    }
+
+    /**
+     * Copy the necessary FPKM and SAMSTAT.HTML files to a local directory.
+     *
+     * @return the directory containing the FPKM files copied
+     *
+     * @throws IOException
+     */
+    private File copyFpkmFiles() throws IOException {
+        log.info("Copying FPKM tracking files from {}.", this.inDir);
+        CopyTask copy = new CopyTask(this.workDir, this.workspace);
+        File[] allFiles = copy.copyRemoteFolder(this.inDir + "/" + RnaJob.FPKM_DIR);
+        return allFiles[0].getParentFile();
     }
 
     /**

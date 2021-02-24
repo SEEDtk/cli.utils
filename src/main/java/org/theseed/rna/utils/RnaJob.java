@@ -210,19 +210,31 @@ public class RnaJob implements Comparable<RnaJob> {
     }
 
     /**
-     * Perform the COPY task, which copies the FPKM file from the RNA job folder to the FPKM folder.
+     * Perform the COPY task, which copies the FPKM and SAMSTAT files from the RNA job folder to the FPKM folder.
      *
      * @param workDir		work directory for temporary files
      * @param workspace		workspace name
      */
     private void copyFpkmFile(File workDir, String workspace) {
         CopyTask copier = new CopyTask(workDir, workspace);
-        String sourceFile = this.outDir + "/." + Phase.ALIGN.getOutputName(this.name) + "/" + FPKM_FILE_NAME;
-        String targetFile = this.outDir + "/" + FPKM_DIR + "/" + Phase.COPY.getOutputName(this.name);
-        log.info("Copying remote file {} to {}.", sourceFile, targetFile);
-        copier.copyRemoteFile(sourceFile, targetFile);
-        // The copy aborts if it fails, so we can mark this task done.
+        // We have to copy two files:  the SAMSTAT HTML file and the FPKM file.
+        String sourceFile1 = this.outDir + "/." + Phase.ALIGN.getOutputName(this.name) + "/" + this.samstatName();
+        String sourceFile2 = this.outDir + "/." + Phase.ALIGN.getOutputName(this.name) + "/" + FPKM_FILE_NAME;
+        String targetFile1 = this.outDir + "/" + FPKM_DIR + "/" + this.name + ".samstat.html";
+        String targetFile2 = this.outDir + "/" + FPKM_DIR + "/" + Phase.COPY.getOutputName(this.name);
+        log.info("Copying remote file {} to {}.", sourceFile1, targetFile1);
+        copier.copyRemoteFile(sourceFile1, targetFile1);
+        log.info("Copying remote file {} to {}.", sourceFile2, targetFile2);
+        copier.copyRemoteFile(sourceFile2, targetFile2);
+        // A copy aborts if it fails, so we can mark this task done.
         this.phase = Phase.DONE;
+    }
+
+    /**
+     * @return the name of the samstat file for this RNA Seq sample.
+     */
+    private String samstatName() {
+        return String.format("Tuxedo_0_replicate1_%s_R1_001_ptrim.fq_%s_R2_001_ptrim.fq.bam.samstat.html", this.name, this.name);
     }
 
     /**
