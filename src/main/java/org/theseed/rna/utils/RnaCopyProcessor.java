@@ -26,7 +26,7 @@ import org.theseed.cli.CopyTask;
 import org.theseed.cli.DirEntry;
 import org.theseed.cli.DirTask;
 import org.theseed.io.TabbedLineReader;
-import org.theseed.proteins.SampleId;
+import org.theseed.samples.SampleId;
 import org.theseed.utils.BaseProcessor;
 import org.theseed.utils.ParseFailureException;
 
