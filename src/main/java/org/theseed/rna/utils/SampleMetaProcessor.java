@@ -36,7 +36,7 @@ import org.theseed.utils.ParseFailureException;
  * -h	display command-line usage
  * -v	show more detailed progress messages
  *
- * --prod	id specified, the name of a big production table; the growth and production data will be copied for samples that do
+ * --prod	if specified, the name of a big production table; the growth and production data will be copied for samples that do
  * 			not already have it
  *
  * @author Bruce Parrello
