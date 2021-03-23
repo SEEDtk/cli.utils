@@ -6,6 +6,7 @@ import org.theseed.rna.utils.FpkmAllProcessor;
 import org.theseed.rna.utils.FpkmSummaryProcessor;
 import org.theseed.rna.utils.RnaCopyProcessor;
 import org.theseed.rna.utils.RnaSeqProcessor;
+import org.theseed.rna.utils.SampleMetaFixProcessor;
 import org.theseed.rna.utils.SampleMetaProcessor;
 import org.theseed.utils.BaseProcessor;
 
@@ -17,6 +18,7 @@ import org.theseed.utils.BaseProcessor;
  * fpkmAll		generate all of the standard RNA SEQ files
  * rnaCopy		copy RNA read files into PATRIC for processing by the FPKM commands
  * rnaSetup		update the sampleMeta.tbl file from the progress.txt and rna.production.tbl files
+ * rnaProdFix	add production and density data to a sampleMeta.tbl file
  */
 public class App
 {
@@ -43,6 +45,9 @@ public class App
         case "rnaSetup" :
             processor = new SampleMetaProcessor();
             break;
+        case "rnaProdFix" :
+        	processor = new SampleMetaFixProcessor();
+        	break;
         default:
             throw new RuntimeException("Invalid command " + command);
         }
