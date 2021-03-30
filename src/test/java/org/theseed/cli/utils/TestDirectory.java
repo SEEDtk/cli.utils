@@ -96,6 +96,8 @@ public class TestDirectory extends TestCase {
                 fail("Invalid directory entry " + entry.getName());
             }
         }
+        dirList = dirTask.list("/rastuser25@patricbrc.org/Binning.Webinar/Medium");
+        assertThat(dirList.size(), equalTo(11));
     }
 
     public void testCopyTask() throws IOException {

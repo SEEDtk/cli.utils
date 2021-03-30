@@ -46,8 +46,11 @@ public class App
             processor = new SampleMetaProcessor();
             break;
         case "rnaProdFix" :
-        	processor = new SampleMetaFixProcessor();
-        	break;
+            processor = new SampleMetaFixProcessor();
+            break;
+        case "binReport" :
+            processor = new BinReportProcessor();
+            break;
         default:
             throw new RuntimeException("Invalid command " + command);
         }
