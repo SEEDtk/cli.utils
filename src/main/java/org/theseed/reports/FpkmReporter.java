@@ -36,8 +36,10 @@ public abstract class FpkmReporter implements AutoCloseable {
     protected static Logger log = LoggerFactory.getLogger(FpkmReporter.class);
     /** parsing pattern for samstat processing data (reads, size, creation) */
     protected static final Pattern PROCESSING_PATTERN = Pattern.compile("<p>(\\d+) reads, size:(\\d+) bytes, created (\\S+)");
-    /** parsing patter for samstat quality data (percent >= 30% good) */
+    /** parsing pattern for samstat quality data (percent >= 30% good) */
     protected static final Pattern QUALITY_PATTERN = Pattern.compile("MAPQ >= 30</td> <td>\\d+\\.\\d+</td> <td>(\\d+\\.\\d+)");
+    /** parsing pattern for FPKM file name */
+    protected static final Pattern FPKM_PATTERN = Pattern.compile("([^_]+)_genes.fpkm");
     /** repository of collected data */
     private RnaData data;
     /** name of the current sample */
@@ -169,12 +171,38 @@ public abstract class FpkmReporter implements AutoCloseable {
             for (TabbedLineReader.Line line : reader) {
                 SampleMeta sampleMeta = new SampleMeta(line);
                 if (! sampleMeta.isSuspicious() || ! abridgeFlag)
-                    this.data.addJob(sampleMeta.getSampleId(), sampleMeta.getProduction() / 1000.0,
-                            sampleMeta.getDensity(), sampleMeta.getOldId(),
-                            sampleMeta.isSuspicious());
+                    this.addJob(sampleMeta);
             }
         }
         log.info("{} samples found in meta-data file.", this.data.size());
+    }
+
+    /**
+     * Add a new job from a sample metadata descriptor.
+     *
+     * @param sampleMeta	sample metadata descriptor
+     */
+    private void addJob(SampleMeta sampleMeta) {
+        this.data.addJob(sampleMeta.getSampleId(), sampleMeta.getProduction() / 1000.0,
+                sampleMeta.getDensity(), sampleMeta.getOldId(),
+                sampleMeta.isSuspicious());
+    }
+
+    /**
+     * Create JobData objects for all the specified files.
+     *
+     * @param files			array of tracking file names
+     */
+    public void createMeta(File[] fpkmFiles) {
+        this.data = new RnaData();
+        for (File fpkmFile : fpkmFiles) {
+            Matcher m = FPKM_PATTERN.matcher(fpkmFile.getName());
+            if (m.matches()) {
+                String sampleId = m.group(1);
+                SampleMeta sampleMeta = new SampleMeta(sampleId, sampleId);
+                this.addJob(sampleMeta);
+            }
+        }
     }
 
     /**

@@ -44,6 +44,7 @@ import org.theseed.utils.BaseProcessor;
  * -h	display command-line usage
  * -v	display more detailed progress messages
  * -i	input file (if not STDIN)
+ * -x	if specified, the samples are considered external and no input file is needed
  *
  * --format		output format (default TEXT)
  * --workDir	work directory for temporary files
@@ -83,6 +84,10 @@ public class FpkmSummaryProcessor extends BaseProcessor implements FpkmReporter.
     /** input file */
     @Option(name = "-i", aliases = { "--input" }, metaVar = "meta.tbl", usage = "tab-delimited file of metadata (if not STDIN")
     private File inFile;
+
+    /** external-sample flag */
+    @Option(name = "-x", aliases = { "--external" }, usage = "if specified, the samples are external and no input file is needed")
+    private boolean externalFlag;
 
     /** if specified, suspicious samples will be skipped */
     @Option(name = "--abridge", aliases = { "--abridged" }, usage = "skip suspicious samples")
@@ -138,6 +143,7 @@ public class FpkmSummaryProcessor extends BaseProcessor implements FpkmReporter.
         this.abridgeFlag = false;
         this.outFileStream = null;
         this.localDir = null;
+        this.externalFlag = false;
     }
 
     @Override
@@ -159,7 +165,9 @@ public class FpkmSummaryProcessor extends BaseProcessor implements FpkmReporter.
         if (this.localDir != null && ! this.localDir.isDirectory())
             throw new FileNotFoundException("Local-copy directory " + this.localDir + " is not found or invalid.");
         // Process the input.
-        if (this.inFile == null) {
+        if (this.externalFlag) {
+            log.info("External samples: metadata will be inferred from file list.");
+        } else if (this.inFile == null) {
             log.info("Reading metadata from standard input.");
             this.outStream.readMeta(System.in, this.abridgeFlag);
         } else {
@@ -189,6 +197,10 @@ public class FpkmSummaryProcessor extends BaseProcessor implements FpkmReporter.
                 fpkmFiles = tempDir.listFiles(new GeneFileFilter());
             }
             log.info("{} files to process.", fpkmFiles.length);
+            if (this.externalFlag) {
+                // For external samples, we create the job list from the list of input files.
+                this.outStream.createMeta(fpkmFiles);
+            }
             // Loop through the files.
             this.outStream.startReport();
             for (File fpkmFile : fpkmFiles) {
