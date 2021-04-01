@@ -3,6 +3,7 @@
  */
 package org.theseed.rna.utils;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -22,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.cli.CopyTask;
 import org.theseed.cli.DirEntry;
+import org.theseed.cli.DirEntry.Type;
 import org.theseed.cli.DirTask;
 import org.theseed.utils.BaseProcessor;
 import org.theseed.utils.ParseFailureException;
@@ -116,37 +118,63 @@ public class RnaMapProcessor extends BaseProcessor {
     protected void runCommand() throws Exception {
         // Scan the output directory to find the samples already copied.
         scanOutputDirectory();
-        // Scan the input directory to find the replicate numbers and sample IDs.
-        scanInputDirectory();
-        // Create the copy helper.
-        CopyTask copyTask = new CopyTask(this.workDir, this.workspace);
-        // Loop through the FPKM files.
-        for (String replicateNum : this.replicateSet) {
-            String sampleId = this.sampleMap.get(replicateNum);
-            if (sampleId == null)
-                log.warn("No SAMSTAT file exists for replicate {}.", replicateNum);
-            else {
-                log.info("Copying files for sample {}.", sampleId);
-                // Compute the input directory file names.
-                String samStatName = this.inDir + "/Tuxedo_0_replicate" + replicateNum + "_" + sampleId
-                        + "_1_ptrim.fq_" + sampleId + "_2_ptrim.fq.bam.samstat.html";
-                String fpkmName = this.inDir + "/Tuxedo_0_replicate" + replicateNum + "_genes.fpkm_tracking";
-                // Copy them to the output.
-                copyTask.copyRemoteFile(samStatName, this.outDir + "/" + sampleId + SAMSTAT_SUFFIX);
-                copyTask.copyRemoteFile(fpkmName, this.outDir + "/" + sampleId + FPKM_SUFFIX);
+        // The input directory contains multiple jobs.  We get the list of jobs and process them individually.
+        List<String> jobs = scanMainDirectory();
+        // Scan this input directory to find the replicate numbers and sample IDs.
+        for (String job : jobs) {
+            scanInputDirectory(job);
+            // Create the copy helper.
+            CopyTask copyTask = new CopyTask(this.workDir, this.workspace);
+            // Loop through the FPKM files.
+            for (String replicateNum : this.replicateSet) {
+                String sampleId = this.sampleMap.get(replicateNum);
+                if (sampleId == null)
+                    log.warn("No SAMSTAT file exists for replicate {}.", replicateNum);
+                else {
+                    log.info("Copying files for sample {}.", sampleId);
+                    // Compute the input directory file names.
+                    String samStatName = job + "/Tuxedo_0_replicate" + replicateNum + "_" + sampleId
+                            + "_1_ptrim.fq_" + sampleId + "_2_ptrim.fq.bam.samstat.html";
+                    String fpkmName = job + "/Tuxedo_0_replicate" + replicateNum + "_genes.fpkm_tracking";
+                    // Copy them to the output.
+                    copyTask.copyRemoteFile(samStatName, this.outDir + "/" + sampleId + SAMSTAT_SUFFIX);
+                    copyTask.copyRemoteFile(fpkmName, this.outDir + "/" + sampleId + FPKM_SUFFIX);
+                }
             }
         }
     }
 
     /**
-     * Analyze the input directory to find the replicate numbers and the associated sample IDs.
+     * Scan the main input directory to find all the job directories in it.
+     *
+     * @return a list of job directory names
      */
-    private void scanInputDirectory() {
-        // Now list the input directory.
+    private List<String> scanMainDirectory() {
+        // List the input directory.
         DirTask dirTask = new DirTask(this.workDir, this.workspace);
-        log.info("Scanning input directory {}.", this.inDir);
+        log.info("Scanning main input directory {}.", this.inDir);
         List<DirEntry> inFiles = dirTask.list(this.inDir);
-        // Run through the input directory files, creating the sample map.  We will also track the replicate numbers
+        // Create the output list.
+        List<String> retVal = new ArrayList<String>(inFiles.size());
+        for (DirEntry inFile : inFiles) {
+            if (inFile.getType() == Type.JOB_RESULT)
+                retVal.add(this.inDir + "/." + inFile.getName());
+        }
+        log.info("{} job directories found in {}.", retVal.size(), this.inDir);
+        return retVal;
+    }
+
+    /**
+     * Analyze the input directory to find the replicate numbers and the associated sample IDs.
+     *
+     * @param jobDir	name of job directory
+     */
+    private void scanInputDirectory(String jobDir) {
+        // List the job directory.
+        DirTask dirTask = new DirTask(this.workDir, this.workspace);
+        log.info("Scanning job directory {}.", jobDir);
+        List<DirEntry> inFiles = dirTask.list(jobDir);
+        // Run through the job directory files, creating the sample map.  We will also track the replicate numbers
         // for which FPKM files exist.
         this.replicateSet = new HashSet<String>(inFiles.size());
         this.sampleMap = new HashMap<String, String>(inFiles.size());
