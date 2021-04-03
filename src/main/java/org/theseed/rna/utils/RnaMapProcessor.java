@@ -4,6 +4,7 @@
 package org.theseed.rna.utils;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -25,6 +26,7 @@ import org.theseed.cli.CopyTask;
 import org.theseed.cli.DirEntry;
 import org.theseed.cli.DirEntry.Type;
 import org.theseed.cli.DirTask;
+import org.theseed.io.LineReader;
 import org.theseed.utils.BaseProcessor;
 import org.theseed.utils.ParseFailureException;
 
@@ -56,6 +58,7 @@ import org.theseed.utils.ParseFailureException;
  * -v	show more detailed progress
  *
  * --workDir	temporary working directory; default is "Temp" in the current directory
+ * --blackList	if specified, a file containing the job names for directories that should be skipped, one per line
  *
  * @author Bruce Parrello
  *
@@ -65,12 +68,14 @@ public class RnaMapProcessor extends BaseProcessor {
     // FIELDS
     /** logging facility */
     protected static Logger log = LoggerFactory.getLogger(RnaMapProcessor.class);
-    /** list of samples already present in the output folder */
+    /** set of samples already present in the output folder */
     private Set<String> outputSamples;
     /** map of replicate numbers to sample IDs */
     private Map<String, String> sampleMap;
     /** set of replicate numbers with FPKM files */
     private Set<String> replicateSet;
+    /** set of names for bad jobs to skip */
+    private Set<String> badJobs;
     /** pattern for SAMSTAT html file name */
     private static final Pattern SAMSTAT_PATTERN = Pattern.compile("Tuxedo_0_replicate(\\d+)_([^_]+)_\\S+\\.bam\\.samstat\\.html");
     /** pattern for FPKM file name */
@@ -85,6 +90,10 @@ public class RnaMapProcessor extends BaseProcessor {
     /** work directory for temporary files */
     @Option(name = "--workDir", metaVar = "workDir", usage = "work directory for temporary files")
     private File workDir;
+
+    /** file containing names of jobs to skip */
+    @Option(name = "--blackList", metaVar = "badJobs.tbl", usage = "file containing names of jobs to skip")
+    private File blackListFile;
 
     /** input directory */
     @Argument(index = 0, metaVar = "inDir", usage = "input directory in PATRIC workspace", required = true)
@@ -101,6 +110,7 @@ public class RnaMapProcessor extends BaseProcessor {
     @Override
     protected void setDefaults() {
         this.workDir = new File(System.getProperty("user.dir"), "Temp");
+        this.blackListFile = null;
     }
 
     @Override
@@ -111,6 +121,12 @@ public class RnaMapProcessor extends BaseProcessor {
             this.workDir.deleteOnExit();
         } else
             log.info("Temporary files will be stored in {}.", this.workDir);
+        if (this.blackListFile == null)
+            this.badJobs = Collections.emptySet();
+        else {
+            this.badJobs = LineReader.readSet(this.blackListFile);
+            log.info("{} bad job names read from {},", this.badJobs.size(), this.blackListFile);
+        }
         return true;
     }
 
@@ -130,6 +146,8 @@ public class RnaMapProcessor extends BaseProcessor {
                 String sampleId = this.sampleMap.get(replicateNum);
                 if (sampleId == null)
                     log.warn("No SAMSTAT file exists for replicate {}.", replicateNum);
+                else if (this.outputSamples.contains(sampleId))
+                    log.info("Skipping {}-- already copied.", sampleId);
                 else {
                     log.info("Copying files for sample {}.", sampleId);
                     // Compute the input directory file names.
@@ -137,8 +155,9 @@ public class RnaMapProcessor extends BaseProcessor {
                             + "_1_ptrim.fq_" + sampleId + "_2_ptrim.fq.bam.samstat.html";
                     String fpkmName = job + "/Tuxedo_0_replicate" + replicateNum + "_genes.fpkm_tracking";
                     // Copy them to the output.
-                    copyTask.copyRemoteFile(samStatName, this.outDir + "/" + sampleId + SAMSTAT_SUFFIX);
-                    copyTask.copyRemoteFile(fpkmName, this.outDir + "/" + sampleId + FPKM_SUFFIX);
+                    copyTask.copyRemoteFile(samStatName, this.outDir + "/FPKM/" + sampleId + SAMSTAT_SUFFIX);
+                    copyTask.copyRemoteFile(fpkmName, this.outDir + "/FPKM/" + sampleId + FPKM_SUFFIX);
+                    this.outputSamples.add(sampleId);
                 }
             }
         }
@@ -157,8 +176,13 @@ public class RnaMapProcessor extends BaseProcessor {
         // Create the output list.
         List<String> retVal = new ArrayList<String>(inFiles.size());
         for (DirEntry inFile : inFiles) {
-            if (inFile.getType() == Type.JOB_RESULT)
-                retVal.add(this.inDir + "/." + inFile.getName());
+            if (inFile.getType() == Type.JOB_RESULT) {
+                String jobName = inFile.getName();
+                if (this.badJobs.contains(jobName))
+                    log.info("Skipping bad job {}.", jobName);
+                else
+                    retVal.add(this.inDir + "/." + jobName);
+            }
         }
         log.info("{} job directories found in {}.", retVal.size(), this.inDir);
         return retVal;
@@ -201,7 +225,7 @@ public class RnaMapProcessor extends BaseProcessor {
         DirTask dirTask = new DirTask(this.workDir, this.workspace);
         // List all the files in the output directory.
         log.info("Scanning output directory {}.", this.outDir);
-        List<DirEntry> outFiles = dirTask.list(this.outDir);
+        List<DirEntry> outFiles = dirTask.list(this.outDir + "/FPKM");
         // Save all the samples already copied.
         this.outputSamples = outFiles.stream().map(x -> x.getName()).filter(x -> x.endsWith(FPKM_SUFFIX))
                 .map(x -> StringUtils.removeEnd(x, FPKM_SUFFIX)).collect(Collectors.toSet());
