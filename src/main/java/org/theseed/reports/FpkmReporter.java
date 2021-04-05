@@ -7,8 +7,11 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
+import java.util.SortedMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -252,6 +255,26 @@ public abstract class FpkmReporter implements AutoCloseable {
      */
     public void normalize() {
         this.data.normalize();
+    }
+
+    /**
+     * Compute the baseline value for each feature and write the data to
+     * a file for use in computing triage values.
+     *
+     * @param baseFile	output file name
+     *
+     * @throws IOException
+     */
+    public void saveBaseline(File baseFile) throws IOException {
+        SortedMap<String, Double> baselines = this.data.getBaselines();
+        try (PrintWriter writer = new PrintWriter(baseFile)) {
+            writer.println("fid\tbaseline");
+            for (Map.Entry<String, Double> entry : baselines.entrySet()) {
+                String val = entry.getValue().toString();
+                writer.println(entry.getKey() + "\t" + val);
+            }
+        }
+
     }
 
 }

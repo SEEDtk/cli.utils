@@ -52,6 +52,7 @@ import org.theseed.utils.BaseProcessor;
  * --save		if specified, the name of a file to contain a binary version of the output
  * --abridged	if specified, suspicious samples will not be included in the output
  * --local		if specified, a local directory containing the FPKM input files
+ * --baseLine	if specified, the name of a file to contain baseline values for each feature
  *
  *
  * @author Bruce Parrello
@@ -105,6 +106,10 @@ public class FpkmSummaryProcessor extends BaseProcessor implements FpkmReporter.
     @Option(name = "--local", usage = "if specified, a directory containing local copies of the FPKM gene-tracking files")
     private File localDir;
 
+    /** baseline output file */
+    @Option(name = "--baseLine", usage = "if specified, an output file to contain baseline expression values")
+    private File baseFile;
+
     /** GTO file for aligned genome */
     @Argument(index = 0, metaVar = "base.gto", usage = "GTO file for the base genome", required = true)
     private File baseGenomeFile;
@@ -143,6 +148,7 @@ public class FpkmSummaryProcessor extends BaseProcessor implements FpkmReporter.
         this.abridgeFlag = false;
         this.outFileStream = null;
         this.localDir = null;
+        this.baseFile = null;
         this.externalFlag = false;
     }
 
@@ -279,6 +285,11 @@ public class FpkmSummaryProcessor extends BaseProcessor implements FpkmReporter.
             if (this.normalizeFlag) {
                 log.info("Normalizing FPKMs to TPMs.");
                 this.outStream.normalize();
+            }
+            // Check for baseline output.
+            if (this.baseFile != null) {
+                log.info("Producing baseline file.");
+                this.outStream.saveBaseline(this.baseFile);
             }
             // Close out the report.
             this.outStream.endReport();
