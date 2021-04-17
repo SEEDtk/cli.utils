@@ -33,7 +33,7 @@ public class TextFpkmReporter extends FpkmReporter {
     /** format for weight columns */
     private String weightFormat;
     /** constant headings */
-    private static final String[] HEADINGS = new String[] { "fid", "gene", "bNumber", "function", "neighbor" };
+    private static final String[] HEADINGS = new String[] { "fid", "gene", "bNumber", "function", "neighbor", "AR_num", "iModulons" };
 
     /**
      * Construct this report.
@@ -73,7 +73,7 @@ public class TextFpkmReporter extends FpkmReporter {
         }
         this.buffer.setLength(0);
         String[] fields = new String[] { feat.getId(), gene, bNumber, this.quote + function + this.quote,
-                neighborId };
+                neighborId, Integer.toString(feat.getAtomicRegulon()), StringUtils.join(feat.getiModulons(), ',') };
         this.buffer.append(StringUtils.join(fields, this.delim));
         for (int i = 0; i < this.nSamples; i++) {
             RnaData.Weight weight = row.getWeight(i);

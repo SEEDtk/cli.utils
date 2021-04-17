@@ -54,6 +54,10 @@ public class FpkmAllProcessor extends BaseProcessor {
     @Option(name = "--localDir", metaVar = "localDir", usage = "local directory containing FPKM and samstat files from PATRIC")
     private File localDir;
 
+    /** if TRUE, the local copy of the remote files will not be deleted on exit */
+    @Option(name = "--keep", usage = "do not delete remote files from the work directory on exit")
+    private boolean keepFlag;
+
     /** input file name */
     @Argument(index = 0, metaVar = "parms.tbl", usage = "input file containing command specifications", required = true)
     private File inFile;
@@ -70,6 +74,7 @@ public class FpkmAllProcessor extends BaseProcessor {
     protected void setDefaults() {
         this.workDir = new File(System.getProperty("user.dir"), "Temp");
         this.localDir = null;
+        this.keepFlag = false;
     }
 
     @Override
@@ -101,7 +106,7 @@ public class FpkmAllProcessor extends BaseProcessor {
             // Get a directory of the input files.
             log.info("Copying FPKM tracking files from {}.", this.inDir);
             CopyTask copy = new CopyTask(this.workDir, this.workspace);
-            File[] fpkmFiles = copy.copyRemoteFolder(this.inDir + "/" + RnaJob.FPKM_DIR);
+            File[] fpkmFiles = copy.copyRemoteFolder(this.inDir + "/" + RnaJob.FPKM_DIR, this.keepFlag);
             log.info("{} files copied into {}.", fpkmFiles.length, fpkmDir);
             this.fpkmDir = fpkmDir;
         }

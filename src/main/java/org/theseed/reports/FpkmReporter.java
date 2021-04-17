@@ -277,4 +277,21 @@ public abstract class FpkmReporter implements AutoCloseable {
 
     }
 
+    /**
+     * Read the regulon/modulon data from a regulon definition file.
+     *
+     * @param regulonFile	regulon definition file
+     *
+     * @throws IOException
+     */
+    public void readRegulons(File regulonFile) throws IOException {
+        try (TabbedLineReader regStream = new TabbedLineReader(regulonFile)) {
+            log.info("Reading regulon data from {}.", regulonFile);
+            for (TabbedLineReader.Line line : regStream) {
+                String fid = line.get(0);
+                this.data.storeRegulonData(fid, line.getInt(2), line.get(1));
+            }
+        }
+    }
+
 }

@@ -5,6 +5,7 @@ import java.util.Arrays;
 import org.theseed.rna.utils.FpkmAllProcessor;
 import org.theseed.rna.utils.FpkmSummaryProcessor;
 import org.theseed.rna.utils.RnaCopyProcessor;
+import org.theseed.rna.utils.RnaCorrelationProcessor;
 import org.theseed.rna.utils.RnaMapProcessor;
 import org.theseed.rna.utils.RnaSeqProcessor;
 import org.theseed.rna.utils.SampleMetaFixProcessor;
@@ -21,6 +22,7 @@ import org.theseed.utils.BaseProcessor;
  * rnaSetup		update the sampleMeta.tbl file from the progress.txt and rna.production.tbl files
  * rnaProdFix	add production and density data to a sampleMeta.tbl file
  * rnaMaps		consolidate RNA maps from batch expression data runs
+ * rnaCorr		determine the +/0/- correlation between genes in an RNA database
  */
 public class App
 {
@@ -56,6 +58,9 @@ public class App
         case "rnaMaps" :
             processor = new RnaMapProcessor();
             break;
+        case "rnaCorr" :
+        	processor = new RnaCorrelationProcessor();
+        	break;
         default:
             throw new RuntimeException("Invalid command " + command);
         }

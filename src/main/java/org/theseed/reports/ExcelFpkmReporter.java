@@ -16,6 +16,7 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.rna.RnaData;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.common.usermodel.HyperlinkType;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
@@ -72,7 +73,7 @@ public class ExcelFpkmReporter extends FpkmReporter {
     /** format for feature links */
     private static final String FEATURE_VIEW_LINK = "https://www.patricbrc.org/view/Feature/%s";
     /** index of first sample column */
-    private static final int SAMP_COL_0 = 5;
+    private static final int SAMP_COL_0 = 7;
 
     /**
      * Construct the reporter for the specified output stream and controlling processor.
@@ -124,6 +125,8 @@ public class ExcelFpkmReporter extends FpkmReporter {
         this.setStyledCell(2, "bNumber", this.headStyle);
         this.setStyledCell(3, "function", this.headStyle);
         this.setStyledCell(4, "neighbor", this.headStyle);
+        this.setStyledCell(5, "AR_num", this.headStyle);
+        this.setStyledCell(6, "iModulons", this.headStyle);
         int colNum = SAMP_COL_0;
         // After the header columns, there is one column per sample.  Each is hyperlinked to its samstat page.
         for (RnaData.JobData sample : actualSamples) {
@@ -269,6 +272,9 @@ public class ExcelFpkmReporter extends FpkmReporter {
             neighborId = neighbor.getId();
         cell = this.setTextCell(4, neighborId);
         this.setHref(cell, neighbor);
+        // Process the regulon data.
+        this.setNumCell(5, feat.getAtomicRegulon());
+        this.setTextCell(6, StringUtils.join(feat.getiModulons(), ','));
         // Now we run through the weights.
         int colNum = SAMP_COL_0;
         for (int i = 0; i < this.nSamples; i++) {

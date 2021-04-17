@@ -28,14 +28,18 @@ import org.theseed.utils.BaseProcessor;
  * This class will produce a summary file from all the FPKM files in a PATRIC directory.  This summary file can
  * be used later to build a web page.
  *
- * The positional parameters are the name of the genome file for the aligned genome, the name of the input PATRIC directory,
- * the name of the relevant workspace, and the name of the output file.  If the input PATRIC directory has already been
- * copied to the local hard drive, the directory name on the local drive can be specified instead.
+ * The positional parameters are the name of the genome file for the aligned genome, the name of the regulon definition
+ * file, the name of the input PATRIC directory, the name of the relevant workspace, and the name of the output file.
+ * If the input PATRIC directory has already been copied to the local hard drive, the directory name on the local drive
+ * can be specified instead.
  *
  * The standard input should contain a tab-delimited metadata file describing each sample.  The file should contain the
  * sample ID in the first column, the production level in the second (in mg/l), the optical density in the third, and the
  * original sample name in the third.  It is expected that some values will be missing.  Only samples present in the file
  * will be processed.  The file should be tab-delimited with headers.
+ *
+ * The regulon definition file is also tab-delimited with headers.  The first column should contain a feature ID from the
+ * base GTO, the second a comma-delimited list of the iModulon names, and the third the atomic regulon ID number.
  *
  * The result file will be on the standard output.
  *
@@ -114,16 +118,20 @@ public class FpkmSummaryProcessor extends BaseProcessor implements FpkmReporter.
     @Argument(index = 0, metaVar = "base.gto", usage = "GTO file for the base genome", required = true)
     private File baseGenomeFile;
 
+    /** regulon definition file */
+    @Argument(index = 1, metaVar = "regulons.tbl", usage = "regulon/modulon definition file", required = true)
+    private File regulonFile;
+
     /** PATRIC directory containing the FPKM files */
-    @Argument(index = 1, metaVar = "user@patricbrc.org/inputDirectory", usage = "PATRIC input directory for FPKM tracking files", required = true)
+    @Argument(index = 2, metaVar = "user@patricbrc.org/inputDirectory", usage = "PATRIC input directory for FPKM tracking files", required = true)
     private String inDir;
 
     /** controlling workspace name */
-    @Argument(index = 2, metaVar = "user@patricbrc.org", usage = "controlling workspace", required = true)
+    @Argument(index = 3, metaVar = "user@patricbrc.org", usage = "controlling workspace", required = true)
     private String workspace;
 
     /** output file name */
-    @Argument(index = 3, metaVar = "output.txt", usage = "output file name", required = true)
+    @Argument(index = 4, metaVar = "output.txt", usage = "output file name", required = true)
     private File outFile;
 
     /**
@@ -164,6 +172,9 @@ public class FpkmSummaryProcessor extends BaseProcessor implements FpkmReporter.
         if (! this.baseGenomeFile.canRead())
             throw new FileNotFoundException("Base genome file " + this.baseGenomeFile + " not found or unreadable.");
         this.baseGenome = new Genome(this.baseGenomeFile);
+        // Insure the regulon file exists.
+        if (! this.regulonFile.canRead())
+            throw new FileNotFoundException("Regulon file " + this.regulonFile + " not found or unreadable.");
         // Create the reporter.
         this.outFileStream = new FileOutputStream(this.outFile);
         this.outStream = this.outFormat.create(this.outFileStream, this);
@@ -281,6 +292,8 @@ public class FpkmSummaryProcessor extends BaseProcessor implements FpkmReporter.
                     }
                 }
             }
+            // Process the regulon file.
+            this.outStream.readRegulons(this.regulonFile);
             // Check for normalization.
             if (this.normalizeFlag) {
                 log.info("Normalizing FPKMs to TPMs.");
@@ -312,7 +325,7 @@ public class FpkmSummaryProcessor extends BaseProcessor implements FpkmReporter.
     private File copyFpkmFiles() throws IOException {
         log.info("Copying FPKM tracking files from {}.", this.inDir);
         CopyTask copy = new CopyTask(this.workDir, this.workspace);
-        File[] allFiles = copy.copyRemoteFolder(this.inDir + "/" + RnaJob.FPKM_DIR);
+        File[] allFiles = copy.copyRemoteFolder(this.inDir + "/" + RnaJob.FPKM_DIR, false);
         return allFiles[0].getParentFile();
     }
 

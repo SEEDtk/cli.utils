@@ -102,7 +102,7 @@ public class TestDirectory extends TestCase {
 
     public void testCopyTask() throws IOException {
         CopyTask copyTask = new CopyTask(new File("data"), "rastuser25@patricbrc.org");
-        File[] copied = copyTask.copyRemoteFolder("/rastuser25@patricbrc.org/Binning.Webinar/Big");
+        File[] copied = copyTask.copyRemoteFolder("/rastuser25@patricbrc.org/Binning.Webinar/Big", false);
         assertThat(copied.length, equalTo(3));
         List<String> names = Arrays.stream(copied).map(f -> f.getName()).collect(Collectors.toList());
         assertThat(names, containsInAnyOrder("coupling10.test.tbl", "coupling200.log", "couplings200.random.weighted.tbl"));
