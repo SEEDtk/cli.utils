@@ -6,11 +6,18 @@ package org.theseed.cli.utils;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+import org.jsoup.select.Evaluator;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
@@ -47,7 +54,8 @@ public class BinReportProcessor extends BaseProcessor {
     protected static Logger log = LoggerFactory.getLogger(BinReportProcessor.class);
     /** match pattern for the bin counts */
     private static final Pattern COUNT_PATTERN = Pattern.compile("<p>(\\d+) <a href=\"#goodList\">good bins</a> and (\\d+) <a href=\"#badList\">bad bins</a> were found");
-
+    /** match pattern for the good-bin table */
+    protected static final Pattern TABLE_PATTERN = Pattern.compile("<p><a name=\"goodList\">.+?(<table.+?</table>)", Pattern.DOTALL);
     // COMMAND-LINE OPTIONS
 
     /** working directory for temporary files */
@@ -81,7 +89,7 @@ public class BinReportProcessor extends BaseProcessor {
     @Override
     protected void runCommand() throws Exception {
         // Write the output header.
-        System.out.println("sample\tgood\tbad");
+        System.out.println("sample\tgood\tbad\tgood_ids");
         // Create a copy task for copying the binning files.
         CopyTask copyTask = new CopyTask(this.workDir, this.workspace);
         // This temporary file will hold the binning report.
@@ -102,6 +110,7 @@ public class BinReportProcessor extends BaseProcessor {
                 // Now we need to compute the bin counts.
                 int goodBins = 0;
                 int badBins = 0;
+                String binIds = "";
                 // Start by trying to get the binning report.
                 try {
                     copyTask.copyRemoteFile(binningReportName, targetFile);
@@ -114,12 +123,36 @@ public class BinReportProcessor extends BaseProcessor {
                         // Get the bin counts from the matched substring.
                         goodBins = Integer.valueOf(m.group(1));
                         badBins = Integer.valueOf(m.group(2));
+                        if (goodBins > 0) {
+                            m = BinReportProcessor.TABLE_PATTERN.matcher(htmlString);
+                            if (m.find()) {
+                                log.info("Searching for {} bin genome IDs in sample {}.", goodBins, sampleId);
+                                String table = m.group(1);
+                                // Parse the table HTML.
+                                Document doc = Jsoup.parse(table);
+                                // Loop through the table rows, keeping the genome IDs.
+                                Elements rows = doc.select(new Evaluator.Tag("tr"));
+                                List<String> genomeIds = new ArrayList<String>(goodBins);
+                                for (Element row : rows) {
+                                    Elements cells = row.select(new Evaluator.Tag("td"));
+                                    // Only proceed if this table row has data cells (not headers).
+                                    if (cells.size() >= 2) {
+                                        // The second cell contains the genome ID as text inside a link.
+                                        Element cell = cells.get(1);
+                                        Element link = cell.selectFirst(new Evaluator.Tag("a"));
+                                        genomeIds.add(link.text());
+                                    }
+                                }
+                                // Save the bin genome IDs.
+                                binIds = StringUtils.join(genomeIds, ", ");
+                            }
+                        }
                     }
                 } catch (PatricException e) {
                     log.error("Could not copy binning report for sample {}: {}", sampleId, e.getMessage());
                 }
                 // Write out the bin counts.
-                System.out.format("%s\t%d\t%d%n", sampleId, goodBins, badBins);
+                System.out.format("%s\t%d\t%d\t%s%n", sampleId, goodBins, badBins, binIds);
             }
         }
     }
