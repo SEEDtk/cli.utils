@@ -12,6 +12,8 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -21,8 +23,10 @@ import org.slf4j.LoggerFactory;
 import org.theseed.genome.Feature;
 import org.theseed.io.LineReader;
 import org.theseed.io.TabbedLineReader;
+import org.theseed.rna.FileBaselineComputer;
 import org.theseed.rna.RnaData;
 import org.theseed.rna.RnaData.JobData;
+import org.theseed.rna.RnaFeatureData;
 import org.theseed.rna.utils.SampleMeta;
 
 /**
@@ -132,7 +136,9 @@ public abstract class FpkmReporter implements AutoCloseable {
      */
     public void endReport() {
         this.openReport(this.data.getSamples());
-        for (RnaData.Row row : this.data)
+        // Sort the rows by location.
+        SortedSet<RnaData.Row> rows = new TreeSet<RnaData.Row>(this.data.getRows());
+        for (RnaData.Row row : rows)
             this.writeRow(row);
     }
 
@@ -291,6 +297,37 @@ public abstract class FpkmReporter implements AutoCloseable {
                 String fid = line.get(0);
                 this.data.storeRegulonData(fid, line.getInt(2), line.get(1));
             }
+        }
+    }
+
+    /**
+     * Read the baseline data from a file and store it in the feature data for this RNA database.
+     *
+     * @param baseInFile	input file containing baseline data
+     */
+    public void loadBaseline(File baseInFile) {
+        // Load in the baseline levels.
+        FileBaselineComputer baseComputer = new FileBaselineComputer(baseInFile);
+        // Loop through the features.
+        for (RnaData.Row row : this.data) {
+            RnaFeatureData feat = row.getFeat();
+            double base = baseComputer.getBaseline(row);
+            feat.setBaseLine(base);
+        }
+
+    }
+
+    /**
+     * Set the baseline expression level for each feature based on the trimean of all the
+     * expression data in the database.
+     */
+    public void setBaseline() {
+        Map<String, Double> baselines = this.data.getBaselines();
+        // Loop through the features.
+        for (RnaData.Row row : this.data) {
+            RnaFeatureData feat = row.getFeat();
+            double base = baselines.getOrDefault(feat.getId(), 0.0);
+            feat.setBaseLine(base);
         }
     }
 

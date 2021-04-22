@@ -24,6 +24,7 @@ import org.theseed.rna.ExpressionConverter;
 import org.theseed.rna.IBaselineParameters;
 import org.theseed.rna.IBaselineProvider;
 import org.theseed.rna.RnaData;
+import org.theseed.rna.RnaFeatureData;
 import org.theseed.rna.TriageExpressionConverter;
 import org.theseed.utils.BaseProcessor;
 import org.theseed.utils.ParseFailureException;
@@ -139,13 +140,13 @@ public class RnaCorrelationProcessor extends BaseProcessor implements IBaselineP
                 // Now loop through the row array.  For each feature, we perform the two comparisons between it and every
                 // subsequent feature.
                 for (int i = 0; i < rowList.length; i++) {
-                    RnaData.FeatureData iFeat = rowList[i].getFeat();
+                    RnaFeatureData iFeat = rowList[i].getFeat();
                     String iFid = iFeat.getId();
                     log.info("Computing correlations for {} ({} of {}).", iFid, i, rowList.length);
                     double[] iTriage = this.triageMap.get(iFid);
                     double[] iLevels = this.triageMap.get(iFid);
                     for (int j = i + 1; j < rowList.length; j++) {
-                        RnaData.FeatureData jFeat = rowList[j].getFeat();
+                        RnaFeatureData jFeat = rowList[j].getFeat();
                         String jFid = jFeat.getId();
                         // Compute the correlations.
                         double pc = getPearson(iLevels, this.levelMap.get(jFid));

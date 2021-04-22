@@ -16,6 +16,7 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.rna.RnaData;
+import org.theseed.rna.RnaFeatureData;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.common.usermodel.HyperlinkType;
 import org.apache.poi.ss.usermodel.Cell;
@@ -64,6 +65,10 @@ public class ExcelFpkmReporter extends FpkmReporter {
     private CellStyle alertStyle;
     /** normal style */
     private CellStyle numStyle;
+    /** high-expression style */
+    private CellStyle highStyle;
+    /** low-expression style */
+    private CellStyle lowStyle;
     /** main sheet name */
     private String sheetName;
     /** default column width */
@@ -73,7 +78,7 @@ public class ExcelFpkmReporter extends FpkmReporter {
     /** format for feature links */
     private static final String FEATURE_VIEW_LINK = "https://www.patricbrc.org/view/Feature/%s";
     /** index of first sample column */
-    private static final int SAMP_COL_0 = 7;
+    private static final int SAMP_COL_0 = 8;
 
     /**
      * Construct the reporter for the specified output stream and controlling processor.
@@ -110,8 +115,15 @@ public class ExcelFpkmReporter extends FpkmReporter {
         this.numStyle.setDataFormat(fmt);
         // Create the alert style.
         this.alertStyle = myWorkbook.createCellStyle();
-        this.alertStyle.setFillForegroundColor(IndexedColors.ROSE.getIndex());
+        this.alertStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
         this.alertStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        // Create the level styles.
+        this.highStyle = myWorkbook.createCellStyle();
+        this.highStyle.setFillForegroundColor(IndexedColors.BRIGHT_GREEN.getIndex());
+        this.highStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        this.lowStyle = myWorkbook.createCellStyle();
+        this.lowStyle.setFillForegroundColor(IndexedColors.ROSE.getIndex());
+        this.lowStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
         // Create the totals array.
         this.totals = new double[this.nSamples];
         Arrays.fill(this.totals, 0.0);
@@ -127,6 +139,7 @@ public class ExcelFpkmReporter extends FpkmReporter {
         this.setStyledCell(4, "neighbor", this.headStyle);
         this.setStyledCell(5, "AR_num", this.headStyle);
         this.setStyledCell(6, "iModulons", this.headStyle);
+        this.setStyledCell(7, "baseLine", this.headStyle);
         int colNum = SAMP_COL_0;
         // After the header columns, there is one column per sample.  Each is hyperlinked to its samstat page.
         for (RnaData.JobData sample : actualSamples) {
@@ -240,7 +253,7 @@ public class ExcelFpkmReporter extends FpkmReporter {
      * @param cell	cell to link
      * @param feat	target feature for link (if NULL, no link will be generated)
      */
-    public void setHref(Cell cell, RnaData.FeatureData feat) {
+    public void setHref(Cell cell, RnaFeatureData feat) {
         if (feat != null) {
             try {
                 String encodedFid = URLEncoder.encode(feat.getId(), StandardCharsets.UTF_8.toString());
@@ -256,8 +269,11 @@ public class ExcelFpkmReporter extends FpkmReporter {
     @Override
     protected void writeRow(RnaData.Row row) {
         // Get the main feature and its function.
-        RnaData.FeatureData feat = row.getFeat();
+        RnaFeatureData feat = row.getFeat();
         String fid = feat.getId();
+        double baseLine = feat.getBaseLine();
+        double highMin = baseLine * 2.0;
+        double lowMax = baseLine / 2.0;
         // Create the row and put in the heading cell.
         this.addRow();
         Cell cell = this.setStyledCell(0, fid, this.headStyle);
@@ -266,7 +282,7 @@ public class ExcelFpkmReporter extends FpkmReporter {
         this.setTextCell(2, feat.getBNumber());
         this.setTextCell(3, feat.getFunction());
         // Process the neighbor.
-        RnaData.FeatureData neighbor = row.getNeighbor();
+        RnaFeatureData neighbor = row.getNeighbor();
         String neighborId = "";
         if (neighbor != null)
             neighborId = neighbor.getId();
@@ -275,6 +291,8 @@ public class ExcelFpkmReporter extends FpkmReporter {
         // Process the regulon data.
         this.setNumCell(5, feat.getAtomicRegulon());
         this.setTextCell(6, StringUtils.join(feat.getiModulons(), ','));
+        // Store the baseline.
+        this.setNumCell(7,  feat.getBaseLine());
         // Now we run through the weights.
         int colNum = SAMP_COL_0;
         for (int i = 0; i < this.nSamples; i++) {
@@ -282,10 +300,15 @@ public class ExcelFpkmReporter extends FpkmReporter {
             if (weight == null)
                 this.setTextCell(colNum, "");
             else {
-                cell = this.setNumCell(colNum, weight.getWeight());
-                // An inexact hit is colored pink.
+                double wVal = weight.getWeight();
+                cell = this.setNumCell(colNum, wVal);
+                // An inexact hit is colored pink.  A high expression is green, a low expression is red.
                 if (! weight.isExactHit())
                     cell.setCellStyle(this.alertStyle);
+                else if (wVal >= highMin)
+                    cell.setCellStyle(this.highStyle);
+                else if (wVal <= lowMax)
+                    cell.setCellStyle(this.lowStyle);
                 // Update the totals.
                 this.totals[i] += weight.getWeight();
             }

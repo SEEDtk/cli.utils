@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
 import org.theseed.rna.RnaData;
+import org.theseed.rna.RnaFeatureData;
 
 /**
  * This is a simple output class that produces the data in a simple tab-delimited file.
@@ -33,7 +34,7 @@ public class TextFpkmReporter extends FpkmReporter {
     /** format for weight columns */
     private String weightFormat;
     /** constant headings */
-    private static final String[] HEADINGS = new String[] { "fid", "gene", "bNumber", "function", "neighbor", "AR_num", "iModulons" };
+    private static final String[] HEADINGS = new String[] { "fid", "gene", "bNumber", "function", "neighbor", "AR_num", "iModulons", "baseLine" };
 
     /**
      * Construct this report.
@@ -62,18 +63,19 @@ public class TextFpkmReporter extends FpkmReporter {
     @Override
     protected void writeRow(RnaData.Row row) {
         // Here we write the row.  We need to get some data items out of the feature.
-        RnaData.FeatureData feat = row.getFeat();
+        RnaFeatureData feat = row.getFeat();
         String function = feat.getFunction();
         String gene = feat.getGene();
         String bNumber = feat.getBNumber();
-        RnaData.FeatureData neighbor = row.getNeighbor();
+        RnaFeatureData neighbor = row.getNeighbor();
         String neighborId = "";
         if (neighbor != null) {
             neighborId = neighbor.getId();
         }
         this.buffer.setLength(0);
         String[] fields = new String[] { feat.getId(), gene, bNumber, this.quote + function + this.quote,
-                neighborId, Integer.toString(feat.getAtomicRegulon()), StringUtils.join(feat.getiModulons(), ',') };
+                neighborId, Integer.toString(feat.getAtomicRegulon()), StringUtils.join(feat.getiModulons(), ','),
+                String.format(this.weightFormat, feat.getBaseLine()) };
         this.buffer.append(StringUtils.join(fields, this.delim));
         for (int i = 0; i < this.nSamples; i++) {
             RnaData.Weight weight = row.getWeight(i);

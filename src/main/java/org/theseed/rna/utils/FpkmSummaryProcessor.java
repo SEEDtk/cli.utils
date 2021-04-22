@@ -56,7 +56,9 @@ import org.theseed.utils.BaseProcessor;
  * --save		if specified, the name of a file to contain a binary version of the output
  * --abridged	if specified, suspicious samples will not be included in the output
  * --local		if specified, a local directory containing the FPKM input files
- * --baseLine	if specified, the name of a file to contain baseline values for each feature
+ * --baseOut	if specified, the name of a file to contain baseline values for each feature
+ * --baseIn		if specified, the name of a file containing default baseline expression levels; otherwise, the
+ * 				baseline levels will be computed from the samples in this run
  *
  *
  * @author Bruce Parrello
@@ -111,8 +113,12 @@ public class FpkmSummaryProcessor extends BaseProcessor implements FpkmReporter.
     private File localDir;
 
     /** baseline output file */
-    @Option(name = "--baseLine", usage = "if specified, an output file to contain baseline expression values")
-    private File baseFile;
+    @Option(name = "--baseOut", usage = "if specified, an output file to contain baseline expression values")
+    private File baseOutFile;
+
+    /** baseline output file */
+    @Option(name = "--baseIn", usage = "if specified, an input file containing baseline expression values")
+    private File baseInFile;
 
     /** GTO file for aligned genome */
     @Argument(index = 0, metaVar = "base.gto", usage = "GTO file for the base genome", required = true)
@@ -156,8 +162,9 @@ public class FpkmSummaryProcessor extends BaseProcessor implements FpkmReporter.
         this.abridgeFlag = false;
         this.outFileStream = null;
         this.localDir = null;
-        this.baseFile = null;
+        this.baseOutFile = null;
         this.externalFlag = false;
+        this.baseInFile = null;
     }
 
     @Override
@@ -299,10 +306,18 @@ public class FpkmSummaryProcessor extends BaseProcessor implements FpkmReporter.
                 log.info("Normalizing FPKMs to TPMs.");
                 this.outStream.normalize();
             }
+            // Store the default baselines.
+            if (this.baseInFile != null) {
+                log.info("Loading baseline levels from {}.", this.baseInFile);
+                this.outStream.loadBaseline(this.baseInFile);
+            } else {
+                log.info("Computing baseline levels from expression data.");
+                this.outStream.setBaseline();
+            }
             // Check for baseline output.
-            if (this.baseFile != null) {
+            if (this.baseOutFile != null) {
                 log.info("Producing baseline file.");
-                this.outStream.saveBaseline(this.baseFile);
+                this.outStream.saveBaseline(this.baseOutFile);
             }
             // Close out the report.
             this.outStream.endReport();
