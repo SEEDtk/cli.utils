@@ -295,7 +295,7 @@ public abstract class FpkmReporter implements AutoCloseable {
             log.info("Reading regulon data from {}.", regulonFile);
             for (TabbedLineReader.Line line : regStream) {
                 String fid = line.get(0);
-                this.data.storeRegulonData(fid, line.getInt(2), line.get(1));
+                this.data.storeRegulonData(fid, line.getInt(2), line.get(1), line.get(3));
             }
         }
     }

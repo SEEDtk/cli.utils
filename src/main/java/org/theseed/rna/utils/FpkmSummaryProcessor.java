@@ -39,7 +39,8 @@ import org.theseed.utils.BaseProcessor;
  * will be processed.  The file should be tab-delimited with headers.
  *
  * The regulon definition file is also tab-delimited with headers.  The first column should contain a feature ID from the
- * base GTO, the second a comma-delimited list of the iModulon names, and the third the atomic regulon ID number.
+ * base GTO, the second a comma-delimited list of the iModulon names, the third the atomic regulon ID number, and the
+ * fourth an operon name.
  *
  * The result file will be on the standard output.
  *
