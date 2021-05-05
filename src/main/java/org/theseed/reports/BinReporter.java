@@ -56,11 +56,14 @@ public abstract class BinReporter extends BaseReporter {
     /**
      * Record a good genome.
      *
-     * @param genomeId	ID of the genome
+     * @param sampleId	ID of the controlling bin sample
+     * @param goodId 	ID of the good genome
      * @param score		quality score of the genome
      * @param name		name of the genome
+     * @param refId		ID of the reference genome
+     * @param dnaSize 	number of base pairs in the genome
      */
-    public abstract void goodGenome(String genomeId, double score, String name);
+    public abstract void goodGenome(String sampleId, String goodId, double score, String name, String refId, int dnaSize);
 
     /**
      * Display a single bin.

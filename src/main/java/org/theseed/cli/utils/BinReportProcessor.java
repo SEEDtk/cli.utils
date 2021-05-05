@@ -172,7 +172,8 @@ public class BinReportProcessor extends BaseProcessor {
                                         if (cells.size() >= 3) {
                                             // The second cell contains the genome ID as text inside a link.
                                             // The first cell contains the score in the same way.  The
-                                            // third cell contains the genome name.
+                                            // third cell contains the genome name.  The fourth contains
+                                            // the reference genome ID.  The 11th contains the DNA size.
                                             Element cell = cells.get(1);
                                             Element link = cell.selectFirst(LINK_FINDER);
                                             String goodId = link.text();
@@ -181,7 +182,12 @@ public class BinReportProcessor extends BaseProcessor {
                                             link = cell.selectFirst(LINK_FINDER);
                                             double score = Double.valueOf(link.text());
                                             String name = cells.get(2).text();
-                                            reporter.goodGenome(goodId, score, name);
+                                            cell = cells.get(3);
+                                            link = cell.selectFirst(LINK_FINDER);
+                                            String refId = link.text();
+                                            cell = cells.get(10);
+                                            int dnaSize = Integer.valueOf(cell.text());
+                                            reporter.goodGenome(sampleId, goodId, score, name, refId, dnaSize);
                                         }
                                     }
                                 }

@@ -26,7 +26,7 @@ public class BinsBinReporter extends BinReporter {
     }
 
     @Override
-    public void goodGenome(String genomeId, double score, String name) {
+    public void goodGenome(String sampleId, String genomeId, double score, String name, String refId, int dnaSize) {
     }
 
     @Override

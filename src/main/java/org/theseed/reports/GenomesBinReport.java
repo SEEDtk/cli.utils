@@ -34,18 +34,27 @@ public class GenomesBinReport extends BinReporter {
         private double score;
         private String genomeId;
         private String name;
+        private String sampleId;
+        private String refId;
+        private int dnaSize;
 
         /**
          * Create a descriptor.
          *
          * @param score1		quality score
+         * @param sampleId1		ID of the containing sample
          * @param genomeId1		genome ID
          * @param name1			genome name
+         * @param refId1		reference genome ID
+         * @param dnaSize1		genome size in base pairs
          */
-        public GenomeData(double score1, String genomeId1, String name1) {
+        public GenomeData(double score1, String sampleId1, String genomeId1, String name1, String refId1, int dnaSize1) {
             this.score = score1;
             this.genomeId = genomeId1;
             this.name = name1;
+            this.sampleId = sampleId1;
+            this.refId = refId1;
+            this.dnaSize = dnaSize1;
         }
 
         @Override
@@ -62,14 +71,15 @@ public class GenomesBinReport extends BinReporter {
          * @return the output string for this genome
          */
         public String toLine() {
-            return String.format("%s\t%s\t%8.4f", this.genomeId, this.name, this.score);
+            return String.format("%s\t%s\t%s\t%d\t%8.4f\t%s", this.sampleId, this.genomeId, this.name,
+                    this.dnaSize, this.score, this.refId);
         }
 
         /**
          * @return the header line for the genome report
          */
         public static String header() {
-            return "genome_id\tname\tscore";
+            return "sample_id\tgenome_id\tname\tdna_size\tscore\tref_id";
         }
     }
 
@@ -84,8 +94,8 @@ public class GenomesBinReport extends BinReporter {
     }
 
     @Override
-    public void goodGenome(String genomeId, double score, String name) {
-        this.goodGenomes.add(new GenomeData(score, genomeId, name));
+    public void goodGenome(String sampleId, String genomeId, double score, String name, String refId, int dnaSize) {
+        this.goodGenomes.add(new GenomeData(score, sampleId, genomeId, name, refId, dnaSize));
     }
 
     @Override
