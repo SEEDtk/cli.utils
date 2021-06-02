@@ -23,6 +23,7 @@ import org.theseed.utils.BaseProcessor;
  * rnaProdFix	add production and density data to a sampleMeta.tbl file
  * rnaMaps		consolidate RNA maps from batch expression data runs
  * rnaCorr		determine the +/0/- correlation between genes in an RNA database
+ * binReport	bin composition in a PATRIC workspace directory
  */
 public class App
 {
@@ -59,8 +60,8 @@ public class App
             processor = new RnaMapProcessor();
             break;
         case "rnaCorr" :
-        	processor = new RnaCorrelationProcessor();
-        	break;
+            processor = new RnaCorrelationProcessor();
+            break;
         default:
             throw new RuntimeException("Invalid command " + command);
         }

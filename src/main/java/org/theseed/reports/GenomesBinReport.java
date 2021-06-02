@@ -4,12 +4,10 @@
 package org.theseed.reports;
 
 import java.io.OutputStream;
+import java.util.Arrays;
 import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * This bin report lists the IDs of the good genomes.
@@ -20,10 +18,8 @@ import org.slf4j.LoggerFactory;
 public class GenomesBinReport extends BinReporter {
 
     // FIELDS
-    /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(GenomesBinReport.class);
-    /** set of good genomes */
-    private SortedSet<GenomeData> goodGenomes;
+    /** sets of genomes in a two-element list:  0 = bad, 1 = good */
+    private List<SortedSet<GenomeData>> typeGenomes;
 
     /**
      * This dinky class tracks the data for a single genome.  It is sorted by
@@ -83,9 +79,9 @@ public class GenomesBinReport extends BinReporter {
         }
     }
 
-    public GenomesBinReport(OutputStream output) {
-        super(output);
-        this.goodGenomes = new TreeSet<GenomeData>();
+    public GenomesBinReport(OutputStream output, boolean allFlag) {
+        super(output, allFlag);
+        this.typeGenomes = Arrays.asList(new TreeSet<GenomeData>(), new TreeSet<GenomeData>());
     }
 
     @Override
@@ -94,21 +90,30 @@ public class GenomesBinReport extends BinReporter {
     }
 
     @Override
-    public void goodGenome(String sampleId, String genomeId, double score, String name, String refId, int dnaSize) {
-        this.goodGenomes.add(new GenomeData(score, sampleId, genomeId, name, refId, dnaSize));
+    public void binGenome(String sampleId, int type, String genomeId, double score, String name, String refId, int dnaSize) {
+        this.typeGenomes.get(type).add(new GenomeData(score, sampleId, genomeId, name, refId, dnaSize));
     }
 
     @Override
-    public void displaySample(String name, int bad, List<String> good) {
+    public void displaySample(String name, List<String> good, List<String> bad) {
     }
 
     @Override
     public void closeReport() {
-        log.info("{} good genome found.", this.goodGenomes.size());
+        writeGenomes(this.typeGenomes.get(1));
+        if (this.isAllFlag())
+            writeGenomes(this.typeGenomes.get(0));
+    }
+
+    /**
+     * Write all the genomes in the sorted set.
+     *
+     * @param myGenomes		sorted set to write
+     */
+    public void writeGenomes(SortedSet<GenomeData> myGenomes) {
         // Unspool the genomes in quality order.
-        for (GenomeData data : this.goodGenomes) {
+        for (GenomeData data : myGenomes)
             this.println(data.toLine());
-        }
     }
 
 }

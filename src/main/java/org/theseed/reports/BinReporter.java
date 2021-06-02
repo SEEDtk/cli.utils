@@ -14,6 +14,10 @@ import java.util.List;
  */
 public abstract class BinReporter extends BaseReporter {
 
+    // FIELDS
+    /** TRUE if all bin IDs should be output, not just good ones */
+    private boolean allFlag;
+
     /**
      * This enumeration defines the output types.
      */
@@ -21,19 +25,19 @@ public abstract class BinReporter extends BaseReporter {
         /** report on the individual bins */
         BINS {
             @Override
-            public BinReporter create(OutputStream output) {
-                return new BinsBinReporter(output);
+            public BinReporter create(OutputStream output, boolean allFlag) {
+                return new BinsBinReporter(output, allFlag);
             }
         },
         /** list the good-genome IDs */
         GENOMES {
             @Override
-            public BinReporter create(OutputStream output) {
-                return new GenomesBinReport(output);
+            public BinReporter create(OutputStream output, boolean allFlag) {
+                return new GenomesBinReport(output, allFlag);
             }
         };
 
-        public abstract BinReporter create(OutputStream output);
+        public abstract BinReporter create(OutputStream output, boolean allFlag);
 
     }
 
@@ -41,9 +45,11 @@ public abstract class BinReporter extends BaseReporter {
      * Construct a bin reporter for the specified output stream.
      *
      * @param output	output stream for the report
+     * @param allFlag	if TRUE, both good and bad bin details will be output
      */
-    public BinReporter(OutputStream output) {
+    public BinReporter(OutputStream output, boolean allFlag) {
         super(output);
+        this.allFlag = true;
     }
 
     /**
@@ -54,29 +60,37 @@ public abstract class BinReporter extends BaseReporter {
     public abstract void openReport(String name);
 
     /**
-     * Record a good genome.
+     * Record a genome.
      *
      * @param sampleId	ID of the controlling bin sample
-     * @param goodId 	ID of the good genome
+     * @param type		1 if good, 0 if bad
+     * @param genomeId 	ID of the genome
      * @param score		quality score of the genome
      * @param name		name of the genome
      * @param refId		ID of the reference genome
      * @param dnaSize 	number of base pairs in the genome
      */
-    public abstract void goodGenome(String sampleId, String goodId, double score, String name, String refId, int dnaSize);
+    public abstract void binGenome(String sampleId, int type, String genomeId, double score, String name, String refId, int dnaSize);
 
     /**
      * Display a single bin.
      *
      * @param name		bin sample name
-     * @param bad		number of bad genomes
      * @param good		list of good genome IDs
+     * @param bad		list of bad genome IDs
      */
-    public abstract void displaySample(String name, int bad, List<String> good);
+    public abstract void displaySample(String name, List<String> good, List<String> bad);
 
     /**
      * Finish the report.
      */
     public abstract void closeReport();
+
+	/**
+	 * @return the allFlag
+	 */
+	public boolean isAllFlag() {
+		return allFlag;
+	}
 
 }
