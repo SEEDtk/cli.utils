@@ -3,8 +3,12 @@
  */
 package org.theseed.reports;
 
+import java.io.File;
+import java.io.IOException;
 import java.io.OutputStream;
 import java.util.List;
+
+import org.theseed.utils.ParseFailureException;
 
 /**
  * This is the base class for metagenome binning reports.
@@ -19,37 +23,53 @@ public abstract class BinReporter extends BaseReporter {
     private boolean allFlag;
 
     /**
+     * This interface is used to get the parameters from the command processor.
+     */
+    public interface IParms {
+
+        /**
+         * @return TRUE if all bins are desired instead of just the good bins
+         */
+        public boolean isAllFlag();
+
+        /**
+         * @return the file containing the representative-genome database, or NULL if there is none
+         */
+        public File getRepGenDB();
+    }
+
+    /**
      * This enumeration defines the output types.
      */
     public static enum Type {
         /** report on the individual bins */
         BINS {
             @Override
-            public BinReporter create(OutputStream output, boolean allFlag) {
-                return new BinsBinReporter(output, allFlag);
+            public BinReporter create(OutputStream output, IParms processor) {
+                return new BinsBinReporter(output, processor);
             }
         },
         /** list the good-genome IDs */
         GENOMES {
             @Override
-            public BinReporter create(OutputStream output, boolean allFlag) {
-                return new GenomesBinReport(output, allFlag);
+            public BinReporter create(OutputStream output, IParms processor) throws ParseFailureException, IOException {
+                return new GenomesBinReport(output, processor);
             }
         };
 
-        public abstract BinReporter create(OutputStream output, boolean allFlag);
+        public abstract BinReporter create(OutputStream output, IParms processor) throws ParseFailureException, IOException;
 
     }
 
     /**
      * Construct a bin reporter for the specified output stream.
      *
-     * @param output	output stream for the report
-     * @param allFlag	if TRUE, both good and bad bin details will be output
+     * @param output		output stream for the report
+     * @param processor		controlling command processor
      */
-    public BinReporter(OutputStream output, boolean allFlag) {
+    public BinReporter(OutputStream output, IParms processor) {
         super(output);
-        this.allFlag = true;
+        this.allFlag = processor.isAllFlag();
     }
 
     /**
@@ -86,11 +106,11 @@ public abstract class BinReporter extends BaseReporter {
      */
     public abstract void closeReport();
 
-	/**
-	 * @return the allFlag
-	 */
-	public boolean isAllFlag() {
-		return allFlag;
-	}
+    /**
+     * @return the allFlag
+     */
+    public boolean isAllFlag() {
+        return allFlag;
+    }
 
 }

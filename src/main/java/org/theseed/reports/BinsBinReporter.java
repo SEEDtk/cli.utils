@@ -17,8 +17,8 @@ import org.apache.commons.lang3.StringUtils;
  */
 public class BinsBinReporter extends BinReporter {
 
-    public BinsBinReporter(OutputStream output, boolean allFlag) {
-        super(output, allFlag);
+    public BinsBinReporter(OutputStream output, IParms processor) {
+        super(output, processor);
     }
 
     @Override

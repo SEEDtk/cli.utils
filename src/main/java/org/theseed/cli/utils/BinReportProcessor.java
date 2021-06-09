@@ -4,6 +4,7 @@
 package org.theseed.cli.utils;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -55,7 +56,7 @@ import org.theseed.utils.ParseFailureException;
  * @author Bruce Parrello
  *
  */
-public class BinReportProcessor extends BaseProcessor {
+public class BinReportProcessor extends BaseProcessor implements BinReporter.IParms {
 
     // FIELDS
     /** logging facility */
@@ -91,6 +92,10 @@ public class BinReportProcessor extends BaseProcessor {
     @Argument(index = 0, metaVar = "inDir", usage = "input directory in PATRIC workspace", required = true)
     private String inDir;
 
+    /** if specified, the name of the RepGen database to use for computing repgen IDs */
+    @Option(name = "--repdb", metaVar = "rep200.ser", usage = "repgen database for GENOMES report")
+    private File repgenFile;
+
     /** workspace name */
     @Argument(index = 1, metaVar = "user@patricbrc.org", usage = "PATRIC workspace name", required = true)
     private String workspace;
@@ -101,6 +106,7 @@ public class BinReportProcessor extends BaseProcessor {
         this.outFormat = BinReporter.Type.BINS;
         this.outFile = null;
         this.allFlag = false;
+        this.repgenFile = null;
     }
 
     @Override
@@ -111,6 +117,8 @@ public class BinReportProcessor extends BaseProcessor {
         } else {
             log.info("Using working directory {}.", this.workDir);
         }
+        if (this.repgenFile != null && ! this.repgenFile.canRead())
+            throw new FileNotFoundException("Repgen file " + this.repgenFile + " is not found or unreadable.");
         if (this.outFile == null) {
             log.info("Output will be to the standard output.");
             this.outStream = System.out;
@@ -123,7 +131,7 @@ public class BinReportProcessor extends BaseProcessor {
 
     @Override
     protected void runCommand() throws Exception {
-        try (BinReporter reporter = this.outFormat.create(this.outStream, this.allFlag)) {
+        try (BinReporter reporter = this.outFormat.create(this.outStream, this)) {
             // Get the input directory name.
             String dirName = StringUtils.substringAfterLast(this.inDir, "/");
             // Write the output header.
@@ -203,6 +211,16 @@ public class BinReportProcessor extends BaseProcessor {
             if (this.outFile != null)
                 this.outStream.close();
         }
+    }
+
+    @Override
+    public boolean isAllFlag() {
+        return this.allFlag;
+    }
+
+    @Override
+    public File getRepGenDB() {
+        return this.repgenFile;
     }
 
 }
