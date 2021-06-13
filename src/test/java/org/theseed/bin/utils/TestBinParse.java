@@ -1,7 +1,7 @@
 /**
  *
  */
-package org.theseed.cli.utils;
+package org.theseed.bin.utils;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;

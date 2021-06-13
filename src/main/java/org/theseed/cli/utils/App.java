@@ -2,6 +2,8 @@ package org.theseed.cli.utils;
 
 import java.util.Arrays;
 
+import org.theseed.bin.utils.BinReportProcessor;
+import org.theseed.bin.utils.XMatrixProcessor;
 import org.theseed.rna.utils.FpkmAllProcessor;
 import org.theseed.rna.utils.FpkmSummaryProcessor;
 import org.theseed.rna.utils.RnaCopyProcessor;
@@ -24,6 +26,7 @@ import org.theseed.utils.BaseProcessor;
  * rnaMaps		consolidate RNA maps from batch expression data runs
  * rnaCorr		determine the +/0/- correlation between genes in an RNA database
  * binReport	bin composition in a PATRIC workspace directory
+ * xMatrix		convert bin reports into a classification matrix
  */
 public class App
 {
@@ -61,6 +64,9 @@ public class App
             break;
         case "rnaCorr" :
             processor = new RnaCorrelationProcessor();
+            break;
+        case "xmatrix" :
+            processor = new XMatrixProcessor();
             break;
         default:
             throw new RuntimeException("Invalid command " + command);

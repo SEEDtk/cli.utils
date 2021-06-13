@@ -1,7 +1,7 @@
 /**
  *
  */
-package org.theseed.cli.utils;
+package org.theseed.bin.utils;
 
 import java.io.File;
 import java.io.FileNotFoundException;
