@@ -190,7 +190,12 @@ public class BinReportProcessor extends BaseProcessor implements BinReporter.IPa
                                         String name = cells.get(2).text();
                                         cell = cells.get(3);
                                         link = cell.selectFirst(LINK_FINDER);
-                                        String refId = link.text();
+                                        String refId;
+                                        if (link == null) {
+                                            log.warn("No reference genome found for {} in {}.", genomeId, sampleId);
+                                            refId = "";
+                                        } else
+                                            refId = link.text();
                                         cell = cells.get(10);
                                         int dnaSize = Integer.valueOf(cell.text());
                                         reporter.binGenome(sampleId, type, genomeId, score, name, refId, dnaSize);
