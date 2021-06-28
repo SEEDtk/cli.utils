@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * This is the base class for creating a classification directory.
+ *
  * @author Bruce Parrello
  *
  */
@@ -24,8 +25,9 @@ public abstract class XMatrixDir {
     /** recommended output format */
     private String doubleFormat = "%6.1f";
 
-    // TODO data members for XMatrixDir
-
+    /**
+     * Enumeration for X-matrix directory types
+     */
     public static enum Type {
         DL4J {
             @Override
