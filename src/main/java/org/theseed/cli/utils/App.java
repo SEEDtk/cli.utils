@@ -27,6 +27,7 @@ import org.theseed.utils.BaseProcessor;
  * rnaCorr		determine the +/0/- correlation between genes in an RNA database
  * binReport	bin composition in a PATRIC workspace directory
  * xMatrix		convert bin reports into a classification matrix
+ * bGroups		read an RNA database and output the group IDs, organized by Blattner number
  */
 public class App
 {
@@ -67,6 +68,9 @@ public class App
             break;
         case "xmatrix" :
             processor = new XMatrixProcessor();
+            break;
+        case "bGroups" :
+            processor = new BlattnerProcessor();
             break;
         default:
             throw new RuntimeException("Invalid command " + command);
