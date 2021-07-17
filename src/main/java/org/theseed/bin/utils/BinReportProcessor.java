@@ -37,8 +37,8 @@ import org.theseed.utils.ParseFailureException;
 
 /**
  * This command produces a report on the bins in an output directory.  The binning report for each job in the directory is
- * extracted and the bin counts displayed in a report.  The positional parameters are the name of the output directory and
- * the controlling PATRIC user ID.
+ * extracted and the bin counts displayed in a report.  The positional parameters are the name of the output directory (which
+ * is the input directory to this program) and the controlling PATRIC user ID.
  *
  * The basic strategy is to do a DirList on the specified directory, then look at all the job directories.  In each job directory,
  * we pull out the "BinningReport.html" file and extract the key

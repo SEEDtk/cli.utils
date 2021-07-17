@@ -3,6 +3,7 @@ package org.theseed.cli.utils;
 import java.util.Arrays;
 
 import org.theseed.bin.utils.BinReportProcessor;
+import org.theseed.bin.utils.QzaReportProcessor;
 import org.theseed.bin.utils.XMatrixProcessor;
 import org.theseed.rna.utils.FpkmAllProcessor;
 import org.theseed.rna.utils.FpkmSummaryProcessor;
@@ -59,6 +60,9 @@ public class App
             break;
         case "binReport" :
             processor = new BinReportProcessor();
+            break;
+        case "qzaReport" :
+            processor = new QzaReportProcessor();
             break;
         case "rnaMaps" :
             processor = new RnaMapProcessor();
