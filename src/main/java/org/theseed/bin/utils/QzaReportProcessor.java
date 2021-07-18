@@ -7,7 +7,9 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.kohsuke.args4j.Argument;
@@ -33,6 +35,7 @@ import org.theseed.utils.ParseFailureException;
  * -h	display command-line usage
  * -v	display more frequent log messages
  * -o	output file (if not STDOUT)
+ * -b	batch size for parallel processing
  *
  * --source		type of input directory-- QZA or P3DIR
  * --phred		phred offset for quality strings in the FASTQ files (default 33)
@@ -54,6 +57,18 @@ public class QzaReportProcessor extends BaseReportProcessor {
     private Map<String, DnaKmers> repGenSsuKmerMap;
     /** list of sample files */
     private File[] samples;
+    /** map of hit counts for each representative */
+    private CountMap<String> hitCounts;
+    /** number of good reads found in current sample */
+    private int goodCount;
+    /** start time for processing of current sample */
+    private long start;
+    /** number of batches processed in the current sample */
+    private int batchCount;
+    /** number of reads processed in the current sample */
+    private int readCount;
+    /** map of repgen IDs to names */
+    private Map<String, String> nameMap;
 
     // COMMAND-LINE OPTIONS
 
@@ -85,6 +100,10 @@ public class QzaReportProcessor extends BaseReportProcessor {
     @Option(name = "--K", metaVar = "22", usage = "DNA kmer size")
     private int kmerSize;
 
+    /** batch size */
+    @Option(name = "--batch", aliases = { "-b" }, metaVar = "10", usage = "batch size for parallelization")
+    private int batchSize;
+
     /** input directory name */
     @Argument(index = 0, metaVar = "inDir", usage = "input directory name", required = true)
     private File inDir;
@@ -102,6 +121,7 @@ public class QzaReportProcessor extends BaseReportProcessor {
         this.minHitCount = 20;
         this.minReadLen = 50;
         this.minReadQual = 30.0;
+        this.batchSize = 10;
     }
 
     @Override
@@ -125,6 +145,8 @@ public class QzaReportProcessor extends BaseReportProcessor {
             throw new ParseFailureException("Invalid minimum read length.  Must be greater than 0.");
         if (this.minReadQual > 99.0 || this.minReadQual < 0.0)
             throw new ParseFailureException("Invalid minimum read quality.  Cannot be greater than 99 or less than 0.");
+        if (this.batchSize < 1)
+            throw new ParseFailureException("Invalid batch size.  Must be at least 1.");
         // Store the globals.
         DnaKmers.setKmerSize(this.kmerSize);
         SeqRead.setPhredOffset(this.phredOffset);
@@ -133,7 +155,7 @@ public class QzaReportProcessor extends BaseReportProcessor {
         if (! this.repGenFile.canRead())
             throw new FileNotFoundException("Input repgen file " + this.repGenFile + " is not found or invalid.");
         log.info("Reading SSU rRNA sequences from {}.", this.repGenFile);
-        this.repGenSsuKmerMap = buildKmerMap(this.repGenFile);
+        this.buildKmerMap(this.repGenFile);
         log.info("{} representative genomes found.", this.repGenSsuKmerMap.size());
     }
 
@@ -141,20 +163,24 @@ public class QzaReportProcessor extends BaseReportProcessor {
     protected void runReporter(PrintWriter writer) throws Exception {
         // Write the header line. Note only "sample_id" and "repgen_id" are used by the xmatrix generator.
         // The count is the number of reads that the representative genome hit.
-        writer.println("sample_id\trepgen_id\tcount");
-        // This will count the repgen hits.  It is erased after each sample.
-        CountMap<String> hits = new CountMap<String>();
+        writer.println("sample_id\trepgen_id\trepgen_name\tcount");
+        // We will store the counters in here.  Counters are per-sample, so it will be cleared between samples.
+        this.hitCounts = new CountMap<String>();
+        // Each batch of reads is stored in this list.
+        List<SeqRead> batch = new ArrayList<SeqRead>(this.batchSize);
         // Loop through the samples.
         log.info("Processing samples.");
         for (File sample : this.samples) {
             FastqStream sampleStream = this.sourceType.create(sample);
             String sampleID = sampleStream.getSampleId();
             log.info("Reading sample {} from {}.", sampleID, sample);
-            // Now loop through the reads in the sample.
-            int readCount = 0;
+            this.start = System.currentTimeMillis();
+            this.readCount = 0;
             int badCount = 0;
             int shortCount = 0;
-            int goodCount = 0;
+            this.goodCount = 0;
+            this.batchCount = 0;
+            // Now loop through the reads in the sample.
             for (SeqRead read : sampleStream) {
                 // First we filter the read.
                 if (read.getQual() < this.minReadQual)
@@ -162,35 +188,22 @@ public class QzaReportProcessor extends BaseReportProcessor {
                 else if (read.maxlength() < this.minReadLen)
                     shortCount++;
                 else {
-                    readCount++;
-                    // Get the read's kmers.
-                    SequenceKmers readKmers = read.new Kmers();
-                    // Find the best repgen hit.
-                    String repGenFound = null;
-                    double bestHit = 0.0;
-                    double readLen = read.length();
-                    for (Map.Entry<String, DnaKmers> mapEntry : this.repGenSsuKmerMap.entrySet()) {
-                        DnaKmers mapKmers = mapEntry.getValue();
-                        int simCount = readKmers.similarity(mapKmers);
-                        double simFraction = simCount / readLen;
-                        if (simFraction > bestHit) {
-                            bestHit = simFraction;
-                            repGenFound = mapEntry.getKey();
-                        }
-                    }
-                    // Is the best hit good enough?
-                    if (bestHit >= this.minSimFraction) {
-                        // Yes.  Count it.
-                        goodCount++;
-                        hits.count(repGenFound);
-                    }
+                    // This is a reasonable read, so we must queue it for processing.
+                    // Insure there is room in the batch.
+                    if (batch.size() >= this.batchSize)
+                        this.processBatch(batch);
+                    // Add it to the batch.
+                    batch.add(read);
+                    this.readCount++;
                 }
             }
+            // Process the residual batch.  This also clears the batch for the next sample.
+            this.processBatch(batch);
             log.info("{} repgen instances found in {} good reads.  {} reads were short, {} were bad.", goodCount, readCount, shortCount, badCount);
             // Now process the counts.  We only keep the ones that are high enough.
             int keptCount = 0;
             int foundCount = 0;
-            for (CountMap<String>.Count counter : hits.counts()) {
+            for (CountMap<String>.Count counter : this.hitCounts.counts()) {
                 int hitsCounted = counter.getCount();
                 if (hitsCounted > 0) {
                     // Here we have a repgen that was found in the sample.
@@ -198,39 +211,91 @@ public class QzaReportProcessor extends BaseReportProcessor {
                     // Does it have enough coverage to count?
                     if (hitsCounted >= this.minHitCount) {
                         keptCount++;
-                        writer.format("%s\t%s\t%d%n", sampleID, counter.getKey(), hitsCounted);
+                        String repId = counter.getKey();
+                        String name = this.nameMap.get(repId);
+                        writer.format("%s\t%s\t%s\t%d%n", sampleID, repId, name, hitsCounted);
                     }
                 }
             }
             log.info("{} representatives kept out of {} found in sample {}.", keptCount, foundCount, sampleID);
             // Clear the counters for next time.
-            hits.clear();
+            hitCounts.clear();
         }
         log.info("All done. {} samples processed.", this.samples.length);
     }
 
     /**
-     * Build a map of repgen IDs to SSU rRNA kmer objects.
+     * Process a batch of reads.  The batch is cleared after processing so it can be used again.
+     *
+     * @param batch		list of reads to process
+     */
+    private void processBatch(List<SeqRead> batch) {
+        // We process the batch in parallel.
+        batch.parallelStream().forEach(x -> processRead(x));
+        // Count the batch and display progress.
+        this.batchCount++;
+        if (log.isInfoEnabled() && this.batchCount % 10 == 0) {
+            double rate = (System.currentTimeMillis() - this.start) / (1000.0 * this.readCount);
+            log.info("{} reads processed, {} good hits. {} seconds/read.", this.readCount, this.goodCount, rate);
+        }
+        // Clear the batch to make room for more reads.
+        batch.clear();
+    }
+
+    /**
+     * Process a single read.  We find the read's repgen ID and record it in this object's data structures.
+     *
+     * @param read		read to process
+     */
+    private void processRead(final SeqRead read) {
+        // Get the read's kmers.
+        SequenceKmers readKmers = read.new Kmers();
+        // Find the best repgen hit.
+        String repGenFound = null;
+        double bestHit = 0.0;
+        double readLen = read.length();
+        for (Map.Entry<String, DnaKmers> mapEntry : this.repGenSsuKmerMap.entrySet()) {
+            DnaKmers mapKmers = mapEntry.getValue();
+            int simCount = readKmers.similarity(mapKmers);
+            double simFraction = simCount / readLen;
+            if (simFraction > bestHit) {
+                bestHit = simFraction;
+                repGenFound = mapEntry.getKey();
+            }
+        }
+        // Is the best hit good enough?
+        if (bestHit >= this.minSimFraction) {
+            // Yes.  Count it.  This part must be synchronized so the method is thread-safe.
+            synchronized(this) {
+                this.goodCount++;
+                this.hitCounts.count(repGenFound);
+            }
+        }
+    }
+
+    /**
+     * Build a map of repgen IDs to SSU rRNA kmer objects and another to repgen names.
      *
      * @param rgFile	input four-column table for the repgen set
      *
-     * @return a map from the repgen IDs to the corresponding kmer objects
-     *
      * @throws IOException
      */
-    public static Map<String, DnaKmers> buildKmerMap(File rgFile) throws IOException {
-        Map<String, DnaKmers> retVal = new HashMap<String, DnaKmers>(3000);
+    public void buildKmerMap(File rgFile) throws IOException {
+        this.repGenSsuKmerMap = new HashMap<String, DnaKmers>(3000);
+        this.nameMap = new HashMap<String, String>(3000);
         // Loop through the input file.
         try (TabbedLineReader inStream = new TabbedLineReader(rgFile)) {
             int idCol = inStream.findField("genome_id");
             int seqCol = inStream.findField("ssu_rna");
+            int nameCol = inStream.findField("genome_name");
             for (TabbedLineReader.Line line : inStream) {
                 String repGenId = line.get(idCol);
                 DnaKmers kmers = new DnaKmers(line.get(seqCol));
-                retVal.put(repGenId, kmers);
+                String name = line.get(nameCol);
+                this.repGenSsuKmerMap.put(repGenId, kmers);
+                this.nameMap.put(repGenId, name);
             }
         }
-        return retVal;
     }
 
 }
