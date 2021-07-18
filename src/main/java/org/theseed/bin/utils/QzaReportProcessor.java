@@ -63,8 +63,6 @@ public class QzaReportProcessor extends BaseReportProcessor {
     private int goodCount;
     /** start time for processing of current sample */
     private long start;
-    /** number of batches processed in the current sample */
-    private int batchCount;
     /** number of reads processed in the current sample */
     private int readCount;
     /** map of repgen IDs to names */
@@ -121,7 +119,7 @@ public class QzaReportProcessor extends BaseReportProcessor {
         this.minHitCount = 20;
         this.minReadLen = 50;
         this.minReadQual = 30.0;
-        this.batchSize = 10;
+        this.batchSize = 200;
     }
 
     @Override
@@ -179,7 +177,6 @@ public class QzaReportProcessor extends BaseReportProcessor {
             int badCount = 0;
             int shortCount = 0;
             this.goodCount = 0;
-            this.batchCount = 0;
             // Now loop through the reads in the sample.
             for (SeqRead read : sampleStream) {
                 // First we filter the read.
@@ -232,9 +229,8 @@ public class QzaReportProcessor extends BaseReportProcessor {
     private void processBatch(List<SeqRead> batch) {
         // We process the batch in parallel.
         batch.parallelStream().forEach(x -> processRead(x));
-        // Count the batch and display progress.
-        this.batchCount++;
-        if (log.isInfoEnabled() && this.batchCount % 20 == 0) {
+        // Display progress.
+        if (log.isInfoEnabled()) {
             double speed = (1000.0 * this.readCount) / (System.currentTimeMillis() - this.start);
             log.info("{} reads processed, {} good hits. {} reads/second.", this.readCount, this.goodCount, speed);
         }
