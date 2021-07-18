@@ -234,9 +234,9 @@ public class QzaReportProcessor extends BaseReportProcessor {
         batch.parallelStream().forEach(x -> processRead(x));
         // Count the batch and display progress.
         this.batchCount++;
-        if (log.isInfoEnabled() && this.batchCount % 10 == 0) {
-            double rate = (System.currentTimeMillis() - this.start) / (1000.0 * this.readCount);
-            log.info("{} reads processed, {} good hits. {} seconds/read.", this.readCount, this.goodCount, rate);
+        if (log.isInfoEnabled() && this.batchCount % 20 == 0) {
+            double speed = (1000.0 * this.readCount) / (System.currentTimeMillis() - this.start);
+            log.info("{} reads processed, {} good hits. {} reads/second.", this.readCount, this.goodCount, speed);
         }
         // Clear the batch to make room for more reads.
         batch.clear();
