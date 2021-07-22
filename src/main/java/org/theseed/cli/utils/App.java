@@ -29,6 +29,7 @@ import org.theseed.utils.BaseProcessor;
  * binReport	bin composition in a PATRIC workspace directory
  * xMatrix		convert bin reports into a classification matrix
  * bGroups		read an RNA database and output the group IDs, organized by Blattner number
+ * gtoRoles		get proteins from genomes based on roles
  */
 public class App
 {
@@ -75,6 +76,9 @@ public class App
             break;
         case "bGroups" :
             processor = new BlattnerProcessor();
+            break;
+        case "gtoRoles" :
+            processor = new GtoRolesProcessor();
             break;
         default:
             throw new RuntimeException("Invalid command " + command);
