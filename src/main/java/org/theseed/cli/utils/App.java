@@ -30,6 +30,7 @@ import org.theseed.utils.BaseProcessor;
  * xMatrix		convert bin reports into a classification matrix
  * bGroups		read an RNA database and output the group IDs, organized by Blattner number
  * gtoRoles		get proteins from genomes based on roles
+ * qzaReport	bin composition in trimmed Amplicon database
  */
 public class App
 {

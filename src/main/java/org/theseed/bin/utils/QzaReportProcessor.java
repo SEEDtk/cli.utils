@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
@@ -20,7 +21,8 @@ import org.theseed.counters.CountMap;
 import org.theseed.io.TabbedLineReader;
 import org.theseed.sequence.DnaKmers;
 import org.theseed.sequence.SequenceKmers;
-import org.theseed.sequence.fastq.FastqStream;
+import org.theseed.sequence.fastq.FastqSampleGroup;
+import org.theseed.sequence.fastq.ReadStream;
 import org.theseed.sequence.fastq.SeqRead;
 import org.theseed.utils.BaseReportProcessor;
 import org.theseed.utils.ParseFailureException;
@@ -55,8 +57,10 @@ public class QzaReportProcessor extends BaseReportProcessor {
     protected static Logger log = LoggerFactory.getLogger(QzaReportProcessor.class);
     /** map of repgen IDs to SSU rRNA kmer objects */
     private Map<String, DnaKmers> repGenSsuKmerMap;
-    /** list of sample files */
-    private File[] samples;
+    /** input sample group */
+    private FastqSampleGroup inputGroup;
+    /** set of sample IDs */
+    private Set<String> samples;
     /** map of hit counts for each representative */
     private CountMap<String> hitCounts;
     /** number of good reads found in current sample */
@@ -72,7 +76,7 @@ public class QzaReportProcessor extends BaseReportProcessor {
 
     /** format of input samples */
     @Option(name = "--source", usage = "format of samples in input directory")
-    private FastqStream.Type sourceType;
+    private FastqSampleGroup.Type sourceType;
 
     /** phred offset used to translate quality strings in FASTQ input */
     @Option(name = "--phred", metaVar = "50", usage = "zero-value offset for FASTQ quality strings")
@@ -103,7 +107,7 @@ public class QzaReportProcessor extends BaseReportProcessor {
     private int batchSize;
 
     /** input directory name */
-    @Argument(index = 0, metaVar = "inDir", usage = "input directory name", required = true)
+    @Argument(index = 0, metaVar = "inDir", usage = "input file/directory name", required = true)
     private File inDir;
 
     /** input repgen file (four-column table format */
@@ -112,7 +116,7 @@ public class QzaReportProcessor extends BaseReportProcessor {
 
     @Override
     protected void setReporterDefaults() {
-        this.sourceType = FastqStream.Type.QZA;
+        this.sourceType = FastqSampleGroup.Type.QZA;
         this.phredOffset = 33;
         this.minSimFraction = 0.80;
         this.kmerSize = DnaKmers.kmerSize();
@@ -124,12 +128,14 @@ public class QzaReportProcessor extends BaseReportProcessor {
 
     @Override
     protected void validateReporterParms() throws IOException, ParseFailureException {
-        // Verify the input directory is a directory.
-        if (! this.inDir.isDirectory())
-            throw new FileNotFoundException("Input directory " + this.inDir + " is not found or invalid.");
-        // Get all the samples in the directory.
-        this.samples = this.sourceType.findAll(this.inDir);
-        log.info("{} samples of type {} found in directory {}.", this.samples.length, this.sourceType.toString(), this.inDir);
+        // Verify the input file/directory exists directory.
+        if (! this.inDir.exists())
+            throw new FileNotFoundException("Input " + this.inDir + " is not found.");
+        // Get all the input samples.
+        log.info("Scanning for samples in {}.", this.inDir);
+        this.inputGroup = this.sourceType.create(this.inDir);
+        this.samples = this.inputGroup.getSamples();
+        log.info("{} samples of type {} found in source {}.", this.samples.size(), this.sourceType.toString(), this.inDir);
         // Verify the numbers.
         if (this.phredOffset < 32 || this.phredOffset > 127)
             throw new ParseFailureException("Invalid phred offset.  Must be between 32 and 127.");
@@ -168,35 +174,37 @@ public class QzaReportProcessor extends BaseReportProcessor {
         List<SeqRead> batch = new ArrayList<SeqRead>(this.batchSize);
         // Loop through the samples.
         log.info("Processing samples.");
-        for (File sample : this.samples) {
-            FastqStream sampleStream = this.sourceType.create(sample);
-            String sampleID = sampleStream.getSampleId();
-            log.info("Reading sample {} from {}.", sampleID, sample);
-            this.start = System.currentTimeMillis();
-            this.readCount = 0;
-            int badCount = 0;
-            int shortCount = 0;
-            this.goodCount = 0;
-            // Now loop through the reads in the sample.
-            for (SeqRead read : sampleStream) {
-                // First we filter the read.
-                if (read.getQual() < this.minReadQual)
-                    badCount++;
-                else if (read.maxlength() < this.minReadLen)
-                    shortCount++;
-                else {
-                    // This is a reasonable read, so we must queue it for processing.
-                    // Insure there is room in the batch.
-                    if (batch.size() >= this.batchSize)
-                        this.processBatch(batch);
-                    // Add it to the batch.
-                    batch.add(read);
-                    this.readCount++;
+        int sampleCount = 0;
+        for (String sampleID : this.samples) {
+            try (ReadStream sampleIter = this.inputGroup.sampleIter(sampleID)) {
+                log.info("Reading sample {}", sampleID);
+                this.start = System.currentTimeMillis();
+                this.readCount = 0;
+                int badCount = 0;
+                int shortCount = 0;
+                this.goodCount = 0;
+                // Now loop through the reads in the sample.
+                while (sampleIter.hasNext()) {
+                    SeqRead read = sampleIter.next();
+                    // First we filter the read.
+                    if (read.getQual() < this.minReadQual)
+                        badCount++;
+                    else if (read.maxlength() < this.minReadLen)
+                        shortCount++;
+                    else {
+                        // This is a reasonable read, so we must queue it for processing.
+                        // Insure there is room in the batch.
+                        if (batch.size() >= this.batchSize)
+                            this.processBatch(batch);
+                        // Add it to the batch.
+                        batch.add(read);
+                        this.readCount++;
+                    }
                 }
+                // Process the residual batch.  This also clears the batch for the next sample.
+                this.processBatch(batch);
+                log.info("{} repgen instances found in {} good reads.  {} reads were short, {} were bad.", goodCount, readCount, shortCount, badCount);
             }
-            // Process the residual batch.  This also clears the batch for the next sample.
-            this.processBatch(batch);
-            log.info("{} repgen instances found in {} good reads.  {} reads were short, {} were bad.", goodCount, readCount, shortCount, badCount);
             // Now process the counts.  We only keep the ones that are high enough.
             int keptCount = 0;
             int foundCount = 0;
@@ -217,8 +225,9 @@ public class QzaReportProcessor extends BaseReportProcessor {
             log.info("{} representatives kept out of {} found in sample {}.", keptCount, foundCount, sampleID);
             // Clear the counters for next time.
             hitCounts.clear();
+            sampleCount++;
         }
-        log.info("All done. {} samples processed.", this.samples.length);
+        log.info("All done. {} samples processed.", sampleCount);
     }
 
     /**
