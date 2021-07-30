@@ -87,7 +87,7 @@ public class QzaReportProcessor extends BaseReportProcessor {
     private double minSimFraction;
 
     /** minimum number of kmer hits for a representative genome to be considered significant */
-    @Option(name = "--minHits", metaVar = "10", usage = "minimum number of reads hits for a representative genome to be considered present")
+    @Option(name = "--minHits", metaVar = "150", usage = "minimum number of reads hits for a representative genome to be considered present")
     private int minHitCount;
 
     /** minimum acceptable read length */
@@ -120,7 +120,7 @@ public class QzaReportProcessor extends BaseReportProcessor {
         this.phredOffset = 33;
         this.minSimFraction = 0.80;
         this.kmerSize = DnaKmers.kmerSize();
-        this.minHitCount = 20;
+        this.minHitCount = 180;
         this.minReadLen = 50;
         this.minReadQual = 30.0;
         this.batchSize = 200;
