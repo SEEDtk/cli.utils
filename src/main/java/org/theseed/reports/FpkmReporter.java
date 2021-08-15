@@ -132,12 +132,16 @@ public abstract class FpkmReporter implements AutoCloseable {
     }
 
     /**
-     * Terminate the report.  This actually produces the output.
+     * Terminate the report.  This performs final updates and actually produces the output.
      */
     public void endReport() {
+        // First, we need to update the quality data.
+        this.data.updateQuality();
+        // Now, start the report.
         this.openReport(this.data.getSamples());
         // Sort the rows by location.
         SortedSet<RnaData.Row> rows = new TreeSet<RnaData.Row>(this.data.getRows());
+        // Write them out.
         for (RnaData.Row row : rows)
             this.writeRow(row);
     }
