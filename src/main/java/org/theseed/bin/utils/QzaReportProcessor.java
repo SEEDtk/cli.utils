@@ -8,9 +8,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import org.kohsuke.args4j.Argument;
@@ -18,8 +16,9 @@ import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.counters.CountMap;
-import org.theseed.io.TabbedLineReader;
 import org.theseed.sequence.DnaKmers;
+import org.theseed.sequence.GenomeDescriptor;
+import org.theseed.sequence.GenomeDescriptorSet;
 import org.theseed.sequence.SequenceKmers;
 import org.theseed.sequence.fastq.FastqSampleGroup;
 import org.theseed.sequence.fastq.ReadStream;
@@ -55,8 +54,6 @@ public class QzaReportProcessor extends BaseReportProcessor {
     // FIELDS
     /** logging facility */
     protected static Logger log = LoggerFactory.getLogger(QzaReportProcessor.class);
-    /** map of repgen IDs to SSU rRNA kmer objects */
-    private Map<String, DnaKmers> repGenSsuKmerMap;
     /** input sample group */
     private FastqSampleGroup inputGroup;
     /** set of sample IDs */
@@ -69,8 +66,8 @@ public class QzaReportProcessor extends BaseReportProcessor {
     private long start;
     /** number of reads processed in the current sample */
     private int readCount;
-    /** map of repgen IDs to names */
-    private Map<String, String> nameMap;
+    /** genome descriptor set for repgens */
+    private GenomeDescriptorSet repgens;
 
     // COMMAND-LINE OPTIONS
 
@@ -159,8 +156,8 @@ public class QzaReportProcessor extends BaseReportProcessor {
         if (! this.repGenFile.canRead())
             throw new FileNotFoundException("Input repgen file " + this.repGenFile + " is not found or invalid.");
         log.info("Reading SSU rRNA sequences from {}.", this.repGenFile);
-        this.buildKmerMap(this.repGenFile);
-        log.info("{} representative genomes found.", this.repGenSsuKmerMap.size());
+        this.repgens = new GenomeDescriptorSet(this.repGenFile);
+        log.info("{} representative genomes found.", this.repgens.size());
     }
 
     @Override
@@ -217,7 +214,7 @@ public class QzaReportProcessor extends BaseReportProcessor {
                     if (hitsCounted >= this.minHitCount) {
                         keptCount++;
                         String repId = counter.getKey();
-                        String name = this.nameMap.get(repId);
+                        String name = this.repgens.getName(repId);
                         writer.format("%s\t%s\t%s\t%d%n", sampleID, repId, name, hitsCounted);
                     }
                 }
@@ -259,13 +256,13 @@ public class QzaReportProcessor extends BaseReportProcessor {
         String repGenFound = null;
         double bestHit = 0.0;
         double readLen = read.length();
-        for (Map.Entry<String, DnaKmers> mapEntry : this.repGenSsuKmerMap.entrySet()) {
-            DnaKmers mapKmers = mapEntry.getValue();
+        for (GenomeDescriptor desc : this.repgens) {
+            DnaKmers mapKmers = desc.getSsuKmers();
             int simCount = readKmers.similarity(mapKmers);
             double simFraction = simCount / readLen;
             if (simFraction > bestHit) {
                 bestHit = simFraction;
-                repGenFound = mapEntry.getKey();
+                repGenFound = desc.getId();
             }
         }
         // Is the best hit good enough?
@@ -274,31 +271,6 @@ public class QzaReportProcessor extends BaseReportProcessor {
             synchronized(this) {
                 this.goodCount++;
                 this.hitCounts.count(repGenFound);
-            }
-        }
-    }
-
-    /**
-     * Build a map of repgen IDs to SSU rRNA kmer objects and another to repgen names.
-     *
-     * @param rgFile	input four-column table for the repgen set
-     *
-     * @throws IOException
-     */
-    public void buildKmerMap(File rgFile) throws IOException {
-        this.repGenSsuKmerMap = new HashMap<String, DnaKmers>(3000);
-        this.nameMap = new HashMap<String, String>(3000);
-        // Loop through the input file.
-        try (TabbedLineReader inStream = new TabbedLineReader(rgFile)) {
-            int idCol = inStream.findField("genome_id");
-            int seqCol = inStream.findField("ssu_rna");
-            int nameCol = inStream.findField("genome_name");
-            for (TabbedLineReader.Line line : inStream) {
-                String repGenId = line.get(idCol);
-                DnaKmers kmers = new DnaKmers(line.get(seqCol));
-                String name = line.get(nameCol);
-                this.repGenSsuKmerMap.put(repGenId, kmers);
-                this.nameMap.put(repGenId, name);
             }
         }
     }
