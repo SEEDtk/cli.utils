@@ -26,11 +26,12 @@ import org.theseed.utils.BaseProcessor;
  * rnaProdFix	add production and density data to a sampleMeta.tbl file
  * rnaMaps		consolidate RNA maps from batch expression data runs
  * rnaCorr		determine the +/0/- correlation between genes in an RNA database
- * binReport	bin composition in a PATRIC workspace directory
+ * binReport	determine bin composition in a PATRIC workspace directory
  * xMatrix		convert bin reports into a classification matrix
  * bGroups		read an RNA database and output the group IDs, organized by Blattner number
  * gtoRoles		get proteins from genomes based on roles
- * qzaReport	bin composition in trimmed Amplicon database
+ * qzaReport	determine bin composition in trimmed Amplicon database
+ * updateMaster	update a master PATRIC database:  remove obsolete genomes and add the new ones
  */
 public class App
 {
@@ -80,6 +81,9 @@ public class App
             break;
         case "gtoRoles" :
             processor = new GtoRolesProcessor();
+            break;
+        case "updateMaster" :
+            processor = new UpdateMasterProcessor();
             break;
         default:
             throw new RuntimeException("Invalid command " + command);
