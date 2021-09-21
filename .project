@@ -3,6 +3,7 @@
 	<name>cli.utils</name>
 	<comment></comment>
 	<projects>
+		<project>p3api</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
