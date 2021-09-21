@@ -68,6 +68,8 @@ public class QzaReportProcessor extends BaseReportProcessor {
     private int readCount;
     /** genome descriptor set for repgens */
     private GenomeDescriptorSet repgens;
+    /** array of input files to parse */
+    private File[] inFiles;
 
     // COMMAND-LINE OPTIONS
 
@@ -108,7 +110,7 @@ public class QzaReportProcessor extends BaseReportProcessor {
     private File inDir;
 
     /** input repgen file (four-column table format */
-    @Argument(index = 1, metaVar = "rep.seqs.tbl", usage = "input four-column repgen table.")
+    @Argument(index = 1, metaVar = "rep.seqs.tbl", usage = "input four-column repgen table.", required = true)
     private File repGenFile;
 
     @Override
@@ -125,14 +127,13 @@ public class QzaReportProcessor extends BaseReportProcessor {
 
     @Override
     protected void validateReporterParms() throws IOException, ParseFailureException {
-        // Verify the input file/directory exists directory.
-        if (! this.inDir.exists())
-            throw new FileNotFoundException("Input " + this.inDir + " is not found.");
-        // Get all the input samples.
+        // Verify the input directory exists.
+        if (! this.inDir.isDirectory())
+            throw new FileNotFoundException("Input " + this.inDir + " is not found or invalid.");
+        // Get all the input sample files.
         log.info("Scanning for samples in {}.", this.inDir);
-        this.inputGroup = this.sourceType.create(this.inDir);
-        this.samples = this.inputGroup.getSamples();
-        log.info("{} samples of type {} found in source {}.", this.samples.size(), this.sourceType.toString(), this.inDir);
+        this.inFiles = this.inDir.listFiles(this.sourceType.getFilter());
+        log.info("{} sample files found in {}.", this.inFiles.length, this.inDir);
         // Verify the numbers.
         if (this.phredOffset < 32 || this.phredOffset > 127)
             throw new ParseFailureException("Invalid phred offset.  Must be between 32 and 127.");
@@ -165,66 +166,72 @@ public class QzaReportProcessor extends BaseReportProcessor {
         // Write the header line. Note only "sample_id" and "repgen_id" are used by the xmatrix generator.
         // The count is the number of reads that the representative genome hit.
         writer.println("sample_id\trepgen_id\trepgen_name\tcount");
-        // We will store the counters in here.  Counters are per-sample, so it will be cleared between samples.
-        this.hitCounts = new CountMap<String>();
         // Each batch of reads is stored in this list.
         List<SeqRead> batch = new ArrayList<SeqRead>(this.batchSize);
-        // Loop through the samples.
-        log.info("Processing samples.");
+        // We will store the counters in here.  Counters are per-sample, so it will be cleared between samples.
+        this.hitCounts = new CountMap<String>();
+        // Loop through the sample files.
         int sampleCount = 0;
-        for (String sampleID : this.samples) {
-            try (ReadStream sampleIter = this.inputGroup.sampleIter(sampleID)) {
-                log.info("Reading sample {}", sampleID);
-                this.start = System.currentTimeMillis();
-                this.readCount = 0;
-                int badCount = 0;
-                int shortCount = 0;
-                this.goodCount = 0;
-                // Now loop through the reads in the sample.
-                while (sampleIter.hasNext()) {
-                    SeqRead read = sampleIter.next();
-                    // First we filter the read.
-                    if (read.getQual() < this.minReadQual)
-                        badCount++;
-                    else if (read.maxlength() < this.minReadLen)
-                        shortCount++;
-                    else {
-                        // This is a reasonable read, so we must queue it for processing.
-                        // Insure there is room in the batch.
-                        if (batch.size() >= this.batchSize)
-                            this.processBatch(batch);
-                        // Add it to the batch.
-                        batch.add(read);
-                        this.readCount++;
+        for (File inFile : this.inFiles) {
+            this.inputGroup = this.sourceType.create(inFile);
+            this.samples = this.inputGroup.getSamples();
+            log.info("{} samples of type {} found in source {}.", this.samples.size(), this.sourceType.toString(), inFile);
+            // Loop through the samples.
+            log.info("Processing samples.");
+            for (String sampleID : this.samples) {
+                try (ReadStream sampleIter = this.inputGroup.sampleIter(sampleID)) {
+                    log.info("Reading sample {}", sampleID);
+                    this.start = System.currentTimeMillis();
+                    this.readCount = 0;
+                    int badCount = 0;
+                    int shortCount = 0;
+                    this.goodCount = 0;
+                    // Now loop through the reads in the sample.
+                    while (sampleIter.hasNext()) {
+                        SeqRead read = sampleIter.next();
+                        // First we filter the read.
+                        if (read.getQual() < this.minReadQual)
+                            badCount++;
+                        else if (read.maxlength() < this.minReadLen)
+                            shortCount++;
+                        else {
+                            // This is a reasonable read, so we must queue it for processing.
+                            // Insure there is room in the batch.
+                            if (batch.size() >= this.batchSize)
+                                this.processBatch(batch);
+                            // Add it to the batch.
+                            batch.add(read);
+                            this.readCount++;
+                        }
+                    }
+                    // Process the residual batch.  This also clears the batch for the next sample.
+                    this.processBatch(batch);
+                    log.info("{} repgen instances found in {} good reads.  {} reads were short, {} were bad.", goodCount, readCount, shortCount, badCount);
+                }
+                // Now process the counts.  We only keep the ones that are high enough.
+                int keptCount = 0;
+                int foundCount = 0;
+                for (CountMap<String>.Count counter : this.hitCounts.counts()) {
+                    int hitsCounted = counter.getCount();
+                    if (hitsCounted > 0) {
+                        // Here we have a repgen that was found in the sample.
+                        foundCount++;
+                        // Does it have enough coverage to count?
+                        if (hitsCounted >= this.minHitCount) {
+                            keptCount++;
+                            String repId = counter.getKey();
+                            String name = this.repgens.getName(repId);
+                            writer.format("%s\t%s\t%s\t%d%n", sampleID, repId, name, hitsCounted);
+                        }
                     }
                 }
-                // Process the residual batch.  This also clears the batch for the next sample.
-                this.processBatch(batch);
-                log.info("{} repgen instances found in {} good reads.  {} reads were short, {} were bad.", goodCount, readCount, shortCount, badCount);
+                log.info("{} representatives kept out of {} found in sample {}.", keptCount, foundCount, sampleID);
+                // Clear the counters for next time.
+                hitCounts.clear();
+                sampleCount++;
             }
-            // Now process the counts.  We only keep the ones that are high enough.
-            int keptCount = 0;
-            int foundCount = 0;
-            for (CountMap<String>.Count counter : this.hitCounts.counts()) {
-                int hitsCounted = counter.getCount();
-                if (hitsCounted > 0) {
-                    // Here we have a repgen that was found in the sample.
-                    foundCount++;
-                    // Does it have enough coverage to count?
-                    if (hitsCounted >= this.minHitCount) {
-                        keptCount++;
-                        String repId = counter.getKey();
-                        String name = this.repgens.getName(repId);
-                        writer.format("%s\t%s\t%s\t%d%n", sampleID, repId, name, hitsCounted);
-                    }
-                }
-            }
-            log.info("{} representatives kept out of {} found in sample {}.", keptCount, foundCount, sampleID);
-            // Clear the counters for next time.
-            hitCounts.clear();
-            sampleCount++;
         }
-        log.info("All done. {} samples processed.", sampleCount);
+        log.info("All done. {} samples processed in {} files.", sampleCount, this.inFiles.length);
     }
 
     /**
