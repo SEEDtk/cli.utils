@@ -26,9 +26,10 @@ import org.theseed.utils.ParseFailureException;
 
 /**
  * This command creates a classification matrix for a set of bin reports.  The reports should be in the
- * GENOMES format from the BinReportProcessor command.  The positional parameters are the name of the output
- * directory and then a list of input specifiers arranged in pairs.  The first item in each pair is a label
- * 0value and the second is the file name for a bin report.  So, for example
+ * GENOMES format from the BinReportProcessor command (or the standard format from the QzaReportProcessor
+ * command).  The positional parameters are the name of the output directory and then a list of input
+ * specifiers arranged in pairs.  The first item in each pair is a label value and the second is the
+ * file name for a bin report.  So, for example
  *
  * 		cli.utils xmatrix parkinsons parkReport.tbl alzheimers alzReport.tbl control controlReport.tbl
  *
