@@ -5,9 +5,11 @@ package org.theseed.bin.utils;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -16,6 +18,7 @@ import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.counters.CountMap;
+import org.theseed.io.TabbedLineReader;
 import org.theseed.sequence.DnaKmers;
 import org.theseed.sequence.GenomeDescriptor;
 import org.theseed.sequence.GenomeDescriptorSet;
@@ -23,19 +26,19 @@ import org.theseed.sequence.SequenceKmers;
 import org.theseed.sequence.fastq.FastqSampleGroup;
 import org.theseed.sequence.fastq.ReadStream;
 import org.theseed.sequence.fastq.SeqRead;
-import org.theseed.utils.BaseReportProcessor;
+import org.theseed.utils.BaseProcessor;
 import org.theseed.utils.ParseFailureException;
 
 /**
  * This command processes a directory of Amplicon SSU rRNA samples to produce a report that can be used to build
- * an Xmatrix.  The positional parameter is the name of the input directory containing the samples and the name of
- * the four-column table for the appropriate RepGen set.  The following command-line options are supported.
+ * an Xmatrix.  The positional parameters are the name of the input directory containing the samples, the name of
+ * the four-column table for the appropriate RepGen set, and the name of the output file.  The following
+ * command-line options are supported.
  *
  * The report will be produced
  *
  * -h	display command-line usage
  * -v	display more frequent log messages
- * -o	output file (if not STDOUT)
  * -b	batch size for parallel processing
  *
  * --source		type of input directory-- QZA or P3DIR
@@ -45,11 +48,13 @@ import org.theseed.utils.ParseFailureException;
  * --minHits	minimum number of hits for a representative to be considered significant
  * --minQual	minimum acceptable quality for a read to be acceptable
  * --minLen		minimum acceptable length for a read to be acceptable
+ * --resume		if specified, it is assumed that the output file is the partial result of a previous
+ * 				run, and previoiusly-processed samples will be skipped
  *
  * @author Bruce Parrello
  *
  */
-public class QzaReportProcessor extends BaseReportProcessor {
+public class QzaReportProcessor extends BaseProcessor {
 
     // FIELDS
     /** logging facility */
@@ -70,6 +75,8 @@ public class QzaReportProcessor extends BaseReportProcessor {
     private GenomeDescriptorSet repgens;
     /** array of input files to parse */
     private File[] inFiles;
+    /** set of samples already processed */
+    private Set<String> processed;
 
     // COMMAND-LINE OPTIONS
 
@@ -105,6 +112,10 @@ public class QzaReportProcessor extends BaseReportProcessor {
     @Option(name = "--batch", aliases = { "-b" }, metaVar = "10", usage = "batch size for parallelization")
     private int batchSize;
 
+    /** resume-processing flag */
+    @Option(name = "--resume", usage = "if specified, will resume from a previous run")
+    private boolean resumeFlag;
+
     /** input directory name */
     @Argument(index = 0, metaVar = "inDir", usage = "input file/directory name", required = true)
     private File inDir;
@@ -113,8 +124,12 @@ public class QzaReportProcessor extends BaseReportProcessor {
     @Argument(index = 1, metaVar = "rep.seqs.tbl", usage = "input four-column repgen table.", required = true)
     private File repGenFile;
 
+    /** output file */
+    @Argument(index = 2, metaVar = "output.tbl", usage = "output file", required = true)
+    private File outFile;
+
     @Override
-    protected void setReporterDefaults() {
+    protected void setDefaults() {
         this.sourceType = FastqSampleGroup.Type.QZA;
         this.phredOffset = 33;
         this.minSimFraction = 0.80;
@@ -123,11 +138,12 @@ public class QzaReportProcessor extends BaseReportProcessor {
         this.minReadLen = 50;
         this.minReadQual = 30.0;
         this.batchSize = 200;
+        this.resumeFlag = false;
     }
 
     @Override
-    protected void validateReporterParms() throws IOException, ParseFailureException {
-        // Verify the input directory exists.
+    protected boolean validateParms() throws IOException, ParseFailureException {
+        // Insure the input directory exists.
         if (! this.inDir.isDirectory())
             throw new FileNotFoundException("Input " + this.inDir + " is not found or invalid.");
         // Get all the input sample files.
@@ -153,85 +169,127 @@ public class QzaReportProcessor extends BaseReportProcessor {
         DnaKmers.setKmerSize(this.kmerSize);
         SeqRead.setPhredOffset(this.phredOffset);
         log.info("Kmer size is {} and phred offset is {}.", this.kmerSize, this.phredOffset);
-        // Finally, process the repgen file.
+        // Process the repgen file.
         if (! this.repGenFile.canRead())
             throw new FileNotFoundException("Input repgen file " + this.repGenFile + " is not found or invalid.");
         log.info("Reading SSU rRNA sequences from {}.", this.repGenFile);
         this.repgens = new GenomeDescriptorSet(this.repGenFile);
         log.info("{} representative genomes found.", this.repgens.size());
+        return true;
     }
 
     @Override
-    protected void runReporter(PrintWriter writer) throws Exception {
-        // Write the header line. Note only "sample_id" and "repgen_id" are used by the xmatrix generator.
-        // The count is the number of reads that the representative genome hit.
-        writer.println("sample_id\trepgen_id\trepgen_name\tcount");
-        // Each batch of reads is stored in this list.
-        List<SeqRead> batch = new ArrayList<SeqRead>(this.batchSize);
-        // We will store the counters in here.  Counters are per-sample, so it will be cleared between samples.
-        this.hitCounts = new CountMap<String>();
-        // Loop through the sample files.
-        int sampleCount = 0;
-        for (File inFile : this.inFiles) {
-            this.inputGroup = this.sourceType.create(inFile);
-            this.samples = this.inputGroup.getSamples();
-            log.info("{} samples of type {} found in source {}.", this.samples.size(), this.sourceType.toString(), inFile);
-            // Loop through the samples.
-            log.info("Processing samples.");
-            for (String sampleID : this.samples) {
-                try (ReadStream sampleIter = this.inputGroup.sampleIter(sampleID)) {
-                    log.info("Reading sample {}", sampleID);
-                    this.start = System.currentTimeMillis();
-                    this.readCount = 0;
-                    int badCount = 0;
-                    int shortCount = 0;
-                    this.goodCount = 0;
-                    // Now loop through the reads in the sample.
-                    while (sampleIter.hasNext()) {
-                        SeqRead read = sampleIter.next();
-                        // First we filter the read.
-                        if (read.getQual() < this.minReadQual)
-                            badCount++;
-                        else if (read.maxlength() < this.minReadLen)
-                            shortCount++;
-                        else {
-                            // This is a reasonable read, so we must queue it for processing.
-                            // Insure there is room in the batch.
-                            if (batch.size() >= this.batchSize)
-                                this.processBatch(batch);
-                            // Add it to the batch.
-                            batch.add(read);
-                            this.readCount++;
+    protected void runCommand() throws Exception {
+        // Handle the resume processing.
+        try (PrintWriter writer = this.prepareOutput()) {
+            // Each batch of reads is stored in this list.
+            List<SeqRead> batch = new ArrayList<SeqRead>(this.batchSize);
+            // We will store the counters in here.  Counters are per-sample, so it will be cleared between samples.
+            this.hitCounts = new CountMap<String>();
+            // Loop through the sample files.
+            int sampleCount = 0;
+            for (File inFile : this.inFiles) {
+                // Get the samples in this file.
+                this.inputGroup = this.sourceType.create(inFile);
+                this.samples = this.inputGroup.getSamples();
+                log.info("{} samples of type {} found in source {}.", this.samples.size(), this.sourceType.toString(), inFile);
+                // Remove the ones already processed.
+                this.samples.removeAll(this.processed);
+                // Loop through the remaining samples.
+                log.info("Processing samples.");
+                for (String sampleID : this.samples) {
+                    try (ReadStream sampleIter = this.inputGroup.sampleIter(sampleID)) {
+                        log.info("Reading sample {}", sampleID);
+                        this.start = System.currentTimeMillis();
+                        this.readCount = 0;
+                        int badCount = 0;
+                        int shortCount = 0;
+                        this.goodCount = 0;
+                        // Now loop through the reads in the sample.
+                        while (sampleIter.hasNext()) {
+                            SeqRead read = sampleIter.next();
+                            // First we filter the read.
+                            if (read.getQual() < this.minReadQual)
+                                badCount++;
+                            else if (read.maxlength() < this.minReadLen)
+                                shortCount++;
+                            else {
+                                // This is a reasonable read, so we must queue it for processing.
+                                // Insure there is room in the batch.
+                                if (batch.size() >= this.batchSize)
+                                    this.processBatch(batch);
+                                // Add it to the batch.
+                                batch.add(read);
+                                this.readCount++;
+                            }
+                        }
+                        // Process the residual batch.  This also clears the batch for the next sample.
+                        this.processBatch(batch);
+                        log.info("{} repgen instances found in {} good reads.  {} reads were short, {} were bad.", goodCount, readCount, shortCount, badCount);
+                    }
+                    // Now process the counts.  We only keep the ones that are high enough.
+                    int keptCount = 0;
+                    int foundCount = 0;
+                    for (CountMap<String>.Count counter : this.hitCounts.counts()) {
+                        int hitsCounted = counter.getCount();
+                        if (hitsCounted > 0) {
+                            // Here we have a repgen that was found in the sample.
+                            foundCount++;
+                            // Does it have enough coverage to count?
+                            if (hitsCounted >= this.minHitCount) {
+                                keptCount++;
+                                String repId = counter.getKey();
+                                String name = this.repgens.getName(repId);
+                                writer.format("%s\t%s\t%s\t%d%n", sampleID, repId, name, hitsCounted);
+                            }
                         }
                     }
-                    // Process the residual batch.  This also clears the batch for the next sample.
-                    this.processBatch(batch);
-                    log.info("{} repgen instances found in {} good reads.  {} reads were short, {} were bad.", goodCount, readCount, shortCount, badCount);
+                    // Flush the output at the end of every sample.
+                    writer.flush();
+                    log.info("{} representatives kept out of {} found in sample {}.", keptCount, foundCount, sampleID);
+                    // Clear the counters for next time.
+                    hitCounts.clear();
+                    sampleCount++;
                 }
-                // Now process the counts.  We only keep the ones that are high enough.
-                int keptCount = 0;
-                int foundCount = 0;
-                for (CountMap<String>.Count counter : this.hitCounts.counts()) {
-                    int hitsCounted = counter.getCount();
-                    if (hitsCounted > 0) {
-                        // Here we have a repgen that was found in the sample.
-                        foundCount++;
-                        // Does it have enough coverage to count?
-                        if (hitsCounted >= this.minHitCount) {
-                            keptCount++;
-                            String repId = counter.getKey();
-                            String name = this.repgens.getName(repId);
-                            writer.format("%s\t%s\t%s\t%d%n", sampleID, repId, name, hitsCounted);
-                        }
-                    }
-                }
-                log.info("{} representatives kept out of {} found in sample {}.", keptCount, foundCount, sampleID);
-                // Clear the counters for next time.
-                hitCounts.clear();
-                sampleCount++;
+            }
+            log.info("All done. {} samples processed in {} files.", sampleCount, this.inFiles.length);
+        }
+    }
+
+    /**
+     * Prepare the output file.  If it is new, we write the header.  If we are resuming, we read in the
+     * processed samples to get a list.
+     *
+     * @return a writer for the output file.
+     *
+     * @throws IOException
+     */
+    private PrintWriter prepareOutput() throws IOException {
+        // Create the already-processed set.
+        this.processed = new HashSet<String>();
+        if (! this.resumeFlag) {
+            // Here we have a brand-new file.  Write the header line. Note only "sample_id"
+            // and "repgen_id" are used by the xmatrix generator.  The count is the number
+            // of reads that the representative genome hit.
+            try (PrintWriter writer = new PrintWriter(this.outFile)) {
+                writer.println("sample_id\trepgen_id\trepgen_name\tcount");
+            }
+        } else if (! this.outFile.canRead())
+            throw new FileNotFoundException("Output file " + this.outFile + " is not found or unreadable, but --resume is specified.");
+        else {
+            // We will append to the output file, but first we need to memorize the samples we've already
+            // processed.
+            log.info("Resuming output to file {}.", this.outFile);
+            try (TabbedLineReader resumeStream = new TabbedLineReader(this.outFile)) {
+                int sampleCol = resumeStream.findField("sample_id");
+                for (TabbedLineReader.Line line : resumeStream)
+                    this.processed.add(line.get(sampleCol));
+                log.info("{} samples already processed.", this.processed.size());
             }
         }
-        log.info("All done. {} samples processed in {} files.", sampleCount, this.inFiles.length);
+        FileOutputStream outStream = new FileOutputStream(this.outFile, true);
+        PrintWriter retVal = new PrintWriter(outStream);
+        return retVal;
     }
 
     /**
