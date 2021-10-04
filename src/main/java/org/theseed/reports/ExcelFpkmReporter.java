@@ -71,6 +71,8 @@ public class ExcelFpkmReporter extends FpkmReporter {
     private CellStyle lowStyle;
     /** main sheet name */
     private String sheetName;
+    /** controlling processor */
+    private IParms processor;
     /** default column width */
     private static int DEFAULT_WIDTH = 10 * 256 + 128;
     /** function column width */
@@ -92,6 +94,8 @@ public class ExcelFpkmReporter extends FpkmReporter {
         // Save the PATRIC workspace input directory name and the worksheet name.
         this.inDir = processor.getInDir();
         this.sheetName = processor.getSheetName();
+        // Save the processor so we can get other parms.
+        this.processor = processor;
     }
 
     @Override
@@ -359,6 +363,12 @@ public class ExcelFpkmReporter extends FpkmReporter {
                 this.setStyledCell(2, "Thr g/l", this.headStyle);
                 this.setStyledCell(3, "OD", this.headStyle);
                 this.setStyledCell(4, "FPKM Total", this.headStyle);
+                this.setStyledCell(5, "reads", this.headStyle);
+                this.setStyledCell(6, "size", this.headStyle);
+                this.setStyledCell(7, "pct_qual", this.headStyle);
+                this.setStyledCell(8, "avg_read_len", this.headStyle);
+                this.setStyledCell(9, "coverage", this.headStyle);
+                this.setStyledCell(10, "pct_expressed", this.headStyle);
                 // Create the data rows, one per sample.
                 for (int i = 0; i < nSamples; i++) {
                     this.addRow();
@@ -369,6 +379,12 @@ public class ExcelFpkmReporter extends FpkmReporter {
                     cells.add(this.setNumCell(2, sample.getProduction()));
                     cells.add(this.setNumCell(3, sample.getOpticalDensity()));
                     cells.add(this.setNumCell(4, this.totals[i]));
+                    cells.add(this.setNumCell(5, sample.getReadCount()));
+                    cells.add(this.setNumCell(6, sample.getBaseCount()));
+                    cells.add(this.setNumCell(7, sample.getQuality()));
+                    cells.add(this.setNumCell(8, sample.getMeanReadLen()));
+                    cells.add(this.setNumCell(9, sample.getCoverage(this.processor.getGenomeLen())));
+                    cells.add(this.setNumCell(10, sample.getExpressedPercent()));
                     // Color the cells for a suspicious sample.
                     if (sample.isSuspicious())
                         cells.stream().forEach(x -> x.setCellStyle(this.alertStyle));

@@ -365,4 +365,9 @@ public class FpkmSummaryProcessor extends BaseProcessor implements FpkmReporter.
         return (this.normalizeFlag ? "TPM" : "FPKM");
     }
 
+    @Override
+    public int getGenomeLen() {
+        return this.baseGenome.getLength();
+    }
+
 }

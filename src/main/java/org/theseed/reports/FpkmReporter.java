@@ -46,7 +46,7 @@ public abstract class FpkmReporter implements AutoCloseable {
     /** parsing pattern for samstat quality data (percent >= 30% good) */
     protected static final Pattern QUALITY_PATTERN = Pattern.compile("MAPQ >= 30</td> <td>\\d+\\.\\d+</td> <td>(\\d+\\.\\d+)");
     /** parsing pattern for FPKM file name */
-    protected static final Pattern FPKM_PATTERN = Pattern.compile("([^_]+)_genes.fpkm");
+    protected static final Pattern FPKM_PATTERN = Pattern.compile("(.+)_genes.fpkm");
     /** repository of collected data */
     private RnaData data;
     /** name of the current sample */
@@ -91,6 +91,11 @@ public abstract class FpkmReporter implements AutoCloseable {
          * @return the name to give to the main sheet
          */
         public String getSheetName();
+
+        /**
+         * @return the genome length
+         */
+        public int getGenomeLen();
 
     }
 
