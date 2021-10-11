@@ -114,7 +114,7 @@ public class RnaCopyProcessor extends BaseProcessor {
         // Get the list of FASTQ files in the input directory.
         this.inFiles = new TreeSet<File>(FileUtils.listFiles(this.inDir, FASTQ_PATTERNS, false));
         // Create the sample map.
-        this.sampleMap = new HashMap<String, SampleId>(100);
+        this.sampleMap = new HashMap<String, SampleId>(135);
         // Verify the progress file.
         boolean oldFile = false;
         File progressFile = new File(this.inDir, this.progressFileName);
@@ -214,7 +214,7 @@ public class RnaCopyProcessor extends BaseProcessor {
         log.info("Scanning output directory {}.", this.outDir);
         List<DirEntry> outputFiles = dirTask.list(this.outDir);
         // Create the file-seen map.
-        this.seenSet = new HashSet<SampleId>(outputFiles.size() + 100);
+        this.seenSet = new HashSet<SampleId>(((outputFiles.size() + 100) * 4 + 2) / 3);
         // Put all the files into it.
         int count = 0;
         for (DirEntry entry : outputFiles) {

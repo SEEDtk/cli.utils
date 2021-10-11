@@ -200,8 +200,8 @@ public class RnaMapProcessor extends BaseProcessor {
         List<DirEntry> inFiles = dirTask.list(jobDir);
         // Run through the job directory files, creating the sample map.  We will also track the replicate numbers
         // for which FPKM files exist.
-        this.replicateSet = new HashSet<String>(inFiles.size());
-        this.sampleMap = new HashMap<String, String>(inFiles.size());
+        this.replicateSet = new HashSet<String>((inFiles.size() * 4 + 2) / 3);
+        this.sampleMap = new HashMap<String, String>((inFiles.size() * 4 + 2) / 3);
         for (DirEntry inFile : inFiles) {
             Matcher m = SAMSTAT_PATTERN.matcher(inFile.getName());
             if (m.matches()) {

@@ -62,7 +62,7 @@ public class XMatrixProcessor extends BaseProcessor {
     /** set of repgen IDs found */
     private Set<String> genomeIdSet;
     /** expected number of input samples */
-    private static final int EXPECTED_SAMPLES = 500;
+    public static final int EXPECTED_SAMPLES = 500;
 
     // COMMAND-LINE OPTIONS
 
@@ -125,8 +125,8 @@ public class XMatrixProcessor extends BaseProcessor {
         XMatrixDir dirCreator = this.outFormat.create(this.outDir);
         // Create the tracking maps.
         this.genomeIdSet = new TreeSet<String>();
-        this.sampleGenomeMap = new HashMap<String, Set<String>>(EXPECTED_SAMPLES);
-        this.sampleTypeMap = new HashMap<String, String>(EXPECTED_SAMPLES);
+        this.sampleGenomeMap = new HashMap<String, Set<String>>((EXPECTED_SAMPLES * 4 + 2) / 3);
+        this.sampleTypeMap = new HashMap<String, String>((EXPECTED_SAMPLES * 4 + 2) / 3);
         // This will contain the list of labels, in order.  We allow duplicates.
         List<String> labelSet = new ArrayList<String>(this.inputFileMap.size());
         // This will count the total number of bins found.

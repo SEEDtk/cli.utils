@@ -95,7 +95,7 @@ public class SampleMetaProcessor extends BaseProcessor {
     @Override
     protected void runCommand() throws Exception {
         // Create the maps.
-        this.idMap = new HashMap<String, String>(200);
+        this.idMap = new HashMap<String, String>(300);
         this.sampleMap = new TreeMap<String, SampleMeta>();
         // Read the current sample file.
         log.info("Reading old samples from {}.", this.outFile);

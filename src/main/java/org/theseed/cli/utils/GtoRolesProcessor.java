@@ -168,7 +168,7 @@ public class GtoRolesProcessor extends BaseProcessor {
         log.info("Connection to PDB search API.");
         this.finder = new PdbFinder();
         // Initialize the role batch holder.
-        this.roleBatch = new HashMap<String, GtoRoleData>(this.batchSize);
+        this.roleBatch = new HashMap<String, GtoRoleData>((this.batchSize * 4 + 2) / 3);
         // Create the PDB output file.
         this.pdbWriter = new PrintWriter(new File(this.outDir, "pdbList.txt"));
         return true;

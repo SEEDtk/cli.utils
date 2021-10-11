@@ -168,8 +168,8 @@ public class RnaCorrelationProcessor extends BaseProcessor implements IBaselineP
     * is above or below the baseline and (2) an array of actual expression values.  Missing values are stored as NaN.
     */
    private void createRowMaps() {
-       this.triageMap = new HashMap<String, double[]>(this.data.height());
-       this.levelMap = new HashMap<String, double[]>(this.data.height());
+       this.triageMap = new HashMap<String, double[]>((this.data.height() * 4 + 2) / 3);
+       this.levelMap = new HashMap<String, double[]>((this.data.height() * 4 + 2) / 3);
        // Get the number of columns in the RNA database.
        int nCols = this.data.size();
        log.info("Computing triage levels for {} features.", this.data.height());

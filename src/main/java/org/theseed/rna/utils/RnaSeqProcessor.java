@@ -228,7 +228,7 @@ public class RnaSeqProcessor extends BaseProcessor {
     private void processJobs(Set<RnaJob> incomplete) {
         // Separate out the running tasks.
         log.info("Scanning job list.");
-        Map<String, RnaJob> activeTasks = new HashMap<String, RnaJob>(incomplete.size());
+        Map<String, RnaJob> activeTasks = new HashMap<String, RnaJob>((incomplete.size() * 4 + 2) / 3);
         Set<RnaJob> needsTask = new TreeSet<RnaJob>();
         for (RnaJob job : incomplete) {
             String taskId = job.getTaskId();
@@ -390,7 +390,7 @@ public class RnaSeqProcessor extends BaseProcessor {
     private void scanInputDirectory() {
         log.info("Scanning input directory {}.", this.inDir);
         List<DirEntry> inputFiles = this.dirTask.list(this.inDir);
-        this.activeJobs = new HashMap<String, RnaJob>(inputFiles.size());
+        this.activeJobs = new HashMap<String, RnaJob>((inputFiles.size() * 4 + 2) / 3);
         for (DirEntry inputFile : inputFiles) {
             if (inputFile.getType() == DirEntry.Type.READS) {
                 // Here we have a file that could be used as input.

@@ -92,7 +92,7 @@ public class SampleFileUtils {
      * @param likelySet		set of strings representing the likely sample IDs
      */
     public Map<String, SampleMeta> getLikelyMap(Set<String> likelySet) {
-        Map<String, SampleMeta> retVal = new HashMap<String, SampleMeta>(likelySet.size());
+        Map<String, SampleMeta> retVal = new HashMap<String, SampleMeta>((likelySet.size() * 4 + 2) / 3);
         for (SampleMeta sample : this.samples) {
             String sampleString = sample.getSampleId();
             if (likelySet.contains(sampleString)) {

@@ -35,8 +35,6 @@ import org.theseed.utils.ParseFailureException;
  * the four-column table for the appropriate RepGen set, and the name of the output file.  The following
  * command-line options are supported.
  *
- * The report will be produced
- *
  * -h	display command-line usage
  * -v	display more frequent log messages
  * -b	batch size for parallel processing
@@ -48,8 +46,8 @@ import org.theseed.utils.ParseFailureException;
  * --minHits	minimum number of hits for a representative to be considered significant
  * --minQual	minimum acceptable quality for a read to be acceptable
  * --minLen		minimum acceptable length for a read to be acceptable
- * --resume		if specified, it is assumed that the output file is the partial result of a previous
- * 				run, and previoiusly-processed samples will be skipped
+ * --resume		name of a progress file used to make the program restartable; the default is
+ * 				qzaReport.progress.txt
  *
  * @author Bruce Parrello
  *
@@ -77,6 +75,12 @@ public class QzaReportProcessor extends BaseProcessor {
     private File[] inFiles;
     /** set of samples already processed */
     private Set<String> processed;
+    /** TRUE if we are resuming, else FALSE */
+    private boolean resumeFlag;
+    /** counter of bad samples */
+    private int badSampleCount;
+    /** writer for the progress file */
+    private PrintWriter progressStream;
 
     // COMMAND-LINE OPTIONS
 
@@ -113,8 +117,8 @@ public class QzaReportProcessor extends BaseProcessor {
     private int batchSize;
 
     /** resume-processing flag */
-    @Option(name = "--resume", usage = "if specified, will resume from a previous run")
-    private boolean resumeFlag;
+    @Option(name = "--resume", usage = "file used to track progress for restarts")
+    private File progressFile;
 
     /** input directory name */
     @Argument(index = 0, metaVar = "inDir", usage = "input file/directory name", required = true)
@@ -138,7 +142,7 @@ public class QzaReportProcessor extends BaseProcessor {
         this.minReadLen = 50;
         this.minReadQual = 30.0;
         this.batchSize = 200;
-        this.resumeFlag = false;
+        this.progressFile = new File(System.getProperty("user.dir"), "qzaReport.progress.txt");
     }
 
     @Override
@@ -165,6 +169,9 @@ public class QzaReportProcessor extends BaseProcessor {
             throw new ParseFailureException("Invalid minimum read quality.  Cannot be greater than 99 or less than 0.");
         if (this.batchSize < 1)
             throw new ParseFailureException("Invalid batch size.  Must be at least 1.");
+        // Find out if we are resuming.
+        this.resumeFlag = this.progressFile.exists();
+        this.progressStream = null;
         // Store the globals.
         DnaKmers.setKmerSize(this.kmerSize);
         SeqRead.setPhredOffset(this.phredOffset);
@@ -244,15 +251,28 @@ public class QzaReportProcessor extends BaseProcessor {
                             }
                         }
                     }
-                    // Flush the output at the end of every sample.
-                    writer.flush();
+                    // If there were representatives kept for this sample, flush the output.  Also, record
+                    // the sample in the progress file.
+                    this.progressStream.format("%s\t%d%n", sampleID, keptCount);
+                    if (keptCount > 0)
+                    	writer.flush();
+                    else
+                    	this.badSampleCount++;
+                    // Always flush the progress stream.
+                    this.progressStream.flush();
                     log.info("{} representatives kept out of {} found in sample {}.", keptCount, foundCount, sampleID);
+                    log.info("PROGRESS:  {} samples processed, {} were bad.", this.processed.size(), this.badSampleCount);
                     // Clear the counters for next time.
                     hitCounts.clear();
                     sampleCount++;
                 }
             }
-            log.info("All done. {} samples processed in {} files.", sampleCount, this.inFiles.length);
+            log.info("All done. {} samples processed in {} files, {} were bad.", sampleCount, this.inFiles.length,
+            		this.badSampleCount);
+        } finally {
+        	// Insure we close the progress output file.
+        	if (this.progressStream != null)
+        		this.progressStream.close();
         }
     }
 
@@ -265,30 +285,48 @@ public class QzaReportProcessor extends BaseProcessor {
      * @throws IOException
      */
     private PrintWriter prepareOutput() throws IOException {
+        // Denote we have no bad samples.
+        this.badSampleCount = 0;
         // Create the already-processed set.
-        this.processed = new HashSet<String>();
+        this.processed = new HashSet<String>((XMatrixProcessor.EXPECTED_SAMPLES * 4 + 2) / 3);
+        // Is this a new run?
         if (! this.resumeFlag) {
+        	log.info("Initializing for new output to file {}.", this.outFile);
             // Here we have a brand-new file.  Write the header line. Note only "sample_id"
             // and "repgen_id" are used by the xmatrix generator.  The count is the number
             // of reads that the representative genome hit.
             try (PrintWriter writer = new PrintWriter(this.outFile)) {
                 writer.println("sample_id\trepgen_id\trepgen_name\tcount");
             }
+            // Initialize the progress stream.
+            this.progressStream = new PrintWriter(this.progressFile);
+            this.progressStream.println("sample_id\treps");
         } else if (! this.outFile.canRead())
-            throw new FileNotFoundException("Output file " + this.outFile + " is not found or unreadable, but --resume is specified.");
+            throw new FileNotFoundException("Output file " + this.outFile + " is not found or unreadable, but resume file exists.");
         else {
             // We will append to the output file, but first we need to memorize the samples we've already
             // processed.
             log.info("Resuming output to file {}.", this.outFile);
-            try (TabbedLineReader resumeStream = new TabbedLineReader(this.outFile)) {
-                int sampleCol = resumeStream.findField("sample_id");
-                for (TabbedLineReader.Line line : resumeStream)
-                    this.processed.add(line.get(sampleCol));
-                log.info("{} samples already processed.", this.processed.size());
+            // Get all the samples we've already processed.
+            try (TabbedLineReader progressStream = new TabbedLineReader(this.progressFile)) {
+            	int sampleCol = progressStream.findField("sample_id");
+            	int countCol = progressStream.findField("reps");
+            	for (TabbedLineReader.Line line : progressStream) {
+            		String sampleId = line.get(sampleCol);
+            		int count = line.getInt(countCol);
+            		if (count == 0) this.badSampleCount++;
+            		this.processed.add(sampleId);
+            	}
             }
+            log.info("{} samples already processed. {} were bad.", this.processed.size(), this.badSampleCount);
+            // Set up to append to the progress stream.
+            FileOutputStream outStream = new FileOutputStream(this.progressFile, true);
+            this.progressStream = new PrintWriter(outStream);
         }
+        // Set up to append to the output stream.
         FileOutputStream outStream = new FileOutputStream(this.outFile, true);
         PrintWriter retVal = new PrintWriter(outStream);
+        // Return the main output stream.
         return retVal;
     }
 
