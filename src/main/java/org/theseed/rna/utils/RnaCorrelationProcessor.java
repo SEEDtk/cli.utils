@@ -120,7 +120,7 @@ public class RnaCorrelationProcessor extends BaseProcessor implements IBaselineP
             this.data = RnaData.load(this.rnaFile);
         } catch (ClassNotFoundException e) {
             // Convert this to an IO error. Almost always, it's an incompatible file.
-            throw new IOException("Incompatible RNA data file " + this.rnaFile + ": " + e.getMessage());
+            throw new IOException("Incompatible RNA data file " + this.rnaFile + ": " + e.toString());
         }
         return true;
     }

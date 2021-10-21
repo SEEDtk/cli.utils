@@ -204,7 +204,7 @@ public class BinReportProcessor extends BaseProcessor implements BinReporter.IPa
                             }
                         }
                     } catch (PatricException e) {
-                        log.error("Could not copy binning report for sample {}: {}", sampleId, e.getMessage());
+                        log.error("Could not copy binning report for sample {}: {}", sampleId, e.toString());
                     }
                     // Write out the bin counts.  The good bins are in (1), the bad bins in (0).
                     reporter.displaySample(sampleId, binIds.get(1), binIds.get(0));

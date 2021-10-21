@@ -138,13 +138,13 @@ public class PdbFinder {
         } catch (IOException e) {
             // This is usually a timeout error.
             if (tries >= MAX_TRIES)
-                throw new RuntimeException("HTTP error in PDB request: " + e.getMessage());
+                throw new RuntimeException("HTTP error in PDB request: " + e.toString());
             else {
                 tries++;
-                log.debug("Retrying PDB request after " + e.getMessage());
+                log.debug("Retrying PDB request after " + e.toString());
             }
         } catch (Exception e) {
-            throw new RuntimeException("Error parsing JSON for PDB query: " + e.getMessage());
+            throw new RuntimeException("Error parsing JSON for PDB query: " + e.toString());
         }
         return retVal;
     }
