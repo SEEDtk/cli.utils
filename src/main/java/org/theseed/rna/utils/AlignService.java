@@ -9,6 +9,7 @@ import java.util.List;
 import org.theseed.cli.CliService;
 import org.theseed.cli.DirEntry;
 import org.theseed.cli.DirTask;
+import org.theseed.cli.RnaSource;
 
 import com.github.cliftonlabs.json_simple.JsonArray;
 import com.github.cliftonlabs.json_simple.JsonObject;
@@ -51,15 +52,17 @@ public class AlignService extends CliService {
                     throw new ArrayIndexOutOfBoundsException("Too many FASTQ files in directory " + outPath + ".");
             }
         }
+        // Create the RNA source.
+        RnaSource source = new RnaSource.Paired(leftFile, rightFile);
         // Now build the output.
         this.parms = new JsonObject();
         this.parms.put("single_end_libs", new JsonArray());
         this.parms.put("output_file", RnaJob.Phase.ALIGN.getOutputName(job.getName()));
         this.parms.put("output_path", job.getOutDir());
-        this.parms.put("paired_end_libs", RnaJob.pairList(leftFile, rightFile));
         this.parms.put("reference_genome_id", job.getAlignmentGenomeId());
         this.parms.put("recipe", "RNA-Rocket");
         this.parms.put("strand_specific", "1");
+        source.store(this.parms);
     }
 
     @Override

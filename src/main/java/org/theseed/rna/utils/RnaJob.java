@@ -9,8 +9,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.cli.CopyTask;
+import org.theseed.cli.RnaSource;
 
-import com.github.cliftonlabs.json_simple.JsonArray;
 import com.github.cliftonlabs.json_simple.JsonObject;
 
 /**
@@ -31,12 +31,8 @@ public class RnaJob implements Comparable<RnaJob> {
     private String name;
     /** ID of the current task (or NULL if none) */
     private String taskId;
-    /** left input FASTQ */
-    private String leftFile;
-    /** right input FASTQ */
-    private String rightFile;
-    /** input directory name */
-    private String inDir;
+    /** RNA Sequence source */
+    private RnaSource source;
     /** output directory name */
     private String outDir;
     /** current phase */
@@ -92,16 +88,13 @@ public class RnaJob implements Comparable<RnaJob> {
      * Create an RNA job.
      *
      * @param name			job name
-     * @param inDir			input directory name
      * @param outDir		output directory name
      * @param genomeId		alignment genome ID
      */
-    public RnaJob(String name, String inDir, String outDir, String genomeId) {
+    public RnaJob(String name, String outDir, String genomeId) {
         this.name = name;
         this.taskId = null;
-        this.leftFile = null;
-        this.rightFile = null;
-        this.inDir = inDir;
+        this.source = null;
         this.outDir = outDir;
         this.phase = Phase.TRIM;
         this.alignmentGenomeId = genomeId;
@@ -129,28 +122,26 @@ public class RnaJob implements Comparable<RnaJob> {
     }
 
     /**
-     * Specify a left-read file.
+     * Specify an RNA sequencing source.
      *
-     * @param leftFile 		the base name of the left file
+     * @param source	source containing the RNA Seq data
      */
-    public void setLeftFile(String leftFile) {
-        this.leftFile = this.inDir + "/" + leftFile;
+    public void setSource(RnaSource source) {
+        this.source = source;
     }
 
     /**
-     * Specify a right-read file.
-     *
-     * @param rightFile 	the base name of the right file
+     * @return the current RNA Seq source
      */
-    public void setRightFile(String rightFile) {
-        this.rightFile = this.inDir + "/" + rightFile;
+    public RnaSource getSource() {
+        return this.source;
     }
 
     /**
      * @return TRUE if this job has both read files
      */
     public boolean isPrepared() {
-        return (this.leftFile != null && this.rightFile != null);
+        return (this.source != null);
     }
 
     /**
@@ -234,7 +225,7 @@ public class RnaJob implements Comparable<RnaJob> {
      * @return the name of the samstat file for this RNA Seq sample.
      */
     private String samstatName() {
-        return String.format("Tuxedo_0_replicate1_%s_R1_001_ptrim.fq_%s_R2_001_ptrim.fq.bam.samstat.html", this.name, this.name);
+        return "Tuxedo_0_replicate1_" + this.source.getLeftName(this.name) + "_" + this.source.getRightName(this.name) + ".bam.samstat.html";
     }
 
     /**
@@ -265,30 +256,12 @@ public class RnaJob implements Comparable<RnaJob> {
     }
 
     /**
-     * @return the name of the left-read file
-     */
-    public String getLeftFile() {
-        return this.leftFile;
-    }
-
-    /**
-     * @return the name of the right-read file
-     */
-    public String getRightFile() {
-        return this.rightFile;
-    }
-
-    /**
-     * @return a paired-end library list for a pair of read files
+     * Update a parameter object with this RNA source.
      *
-     * @param leftFile2		left read file name
-     * @param rightFile2	right read file name
+     * @param parms		parameter JSON to update
      */
-    public static JsonArray pairList(String leftFile2, String rightFile2) {
-        return new JsonArray()
-                .addChain(new JsonObject()
-                        .putChain("read1", leftFile2)
-                        .putChain("read2", rightFile2));
+    public void storeSource(JsonObject parms) {
+        this.source.store(parms);
     }
 
     /**

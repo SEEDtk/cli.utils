@@ -4,17 +4,13 @@
 package org.theseed.rna.utils;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.commons.io.FileUtils;
@@ -26,42 +22,40 @@ import org.theseed.cli.DirEntry;
 import org.theseed.cli.DirTask;
 import org.theseed.cli.MkDirTask;
 import org.theseed.cli.StatusTask;
-import org.theseed.io.TabbedLineReader;
+import org.theseed.p3api.Connection;
 import org.theseed.utils.BaseProcessor;
 import org.theseed.utils.ParseFailureException;
+
+import com.github.cliftonlabs.json_simple.JsonObject;
 
 /**
  * This command runs a directory of RNA sequence data.  This is a complicated process that involves multiple steps.  First, the
  * reads must be trimmed.  Next, the trimmed reads must be aligned to the base genome.  Finally, the FPKM files must be copied
  * into the main output directory.
  *
- * The positional parameters are the name of a file describing the base genomes to use, the name of the input directory
- * containing the fastq files, the name of the output directory, and the name of the workspace.  The directory names are
- * PATRIC directories, not files in the file system.
+ * The positional parameters are the ID of the base genome, the name of the input source
+ * containing the fastq files, the name of the output directory, and the name of the workspace.
+ * The directory names are PATRIC directories, not files in the file system.
  *
- * The file describing the base genomes is tab-delimited with headers.  The "pattern" column contains job name patterns and
- * the "genome_id" column contains base genome IDs.
- *
- * The job name is computed from the FASTQ file names.  The command-line options specify the pattern for a fastq file name.
- * The first group is the job name, and the second identifies if the file is left or right.
  *
  * The command-line options are as follows.
  *
  * -h	display command-line usage
  * -v	show more detailed progress
- * -p	pattern for FASTQ files; default is "(.+)_(R[12])_001\\.fastq"
- * -l	identifier for left-read FASTQ files; default is "R1"
+ * -p	pattern for FASTQ files; default is "(.+)_(R[12])_001\\.fastq"; used only by PATRIC_DIR sources
+ * -l	identifier for left-read FASTQ files; default is "R1"; used only by PATRIC_DIR sources
  *
  * --maxIter	maximum number of loop iterations
  * --wait		number of minutes to wait
  * --workDir	temporary working directory; default is "Temp" in the current directory
  * --limit		limit when querying the PATRIC task list (must be large enough to capture all of the running tasks); default 1000
  * --maxTasks	maximum number of tasks to run at one time
+ * --source		type of RNA Seq source; the default is PATRIC_DIR
  *
  * @author Bruce Parrello
  *
  */
-public class RnaSeqProcessor extends BaseProcessor {
+public class RnaSeqProcessor extends BaseProcessor implements RnaSeqGroup.IParms {
 
     // FIELDS
     /** logging facility */
@@ -72,14 +66,12 @@ public class RnaSeqProcessor extends BaseProcessor {
     private StatusTask statusTask;
     /** task for reading a directory */
     private DirTask dirTask;
-    /** compiled pattern for FASTQ files */
-    private Pattern readPattern;
-    /** map of patterns to base genome IDs, in priority order */
-    private List<GenomePattern> genomeMap;
     /** update counter for job results */
     private int updateCounter;
     /** wait interval */
     private int waitInterval;
+    /** RNA Seq source group */
+    private RnaSeqGroup sourceGroup;
 
     // COMMAND-LINE OPTIONS
 
@@ -111,9 +103,13 @@ public class RnaSeqProcessor extends BaseProcessor {
     @Option(name = "--maxTasks", metaVar = "20", usage = "maximum number of running tasks to allow")
     private int maxTasks;
 
+    /** type of RNA Seq source */
+    @Option(name = "--source", usage = "RNA Seq source type")
+    private RnaSeqGroup.Type sourceType;
+
     /** base genome definition file */
-    @Argument(index = 0, metaVar = "baseGenome.tbl", usage = "tab-delimited file containing mapping of job name regexes to base genome IDs", required = true)
-    private File baseFile;
+    @Argument(index = 0, metaVar = "genome_id", usage = "ID of the base genome for this process", required = true)
+    private String baseGenome;
 
     /** input directory */
     @Argument(index = 1, metaVar = "inDir", usage = "input directory in PATRIC workspace", required = true)
@@ -127,28 +123,6 @@ public class RnaSeqProcessor extends BaseProcessor {
     @Argument(index = 3, metaVar = "user@patricbrc.org", usage = "PATRIC workspace name", required = true)
     private String workspace;
 
-    /**
-     * This is a dinky nested class for pairing a genome ID with a regex pattern.
-     */
-    private static class GenomePattern {
-        private Pattern pattern;
-        private String genomeId;
-
-        public GenomePattern(String regex, String genomeId) {
-            this.genomeId = genomeId;
-            this.pattern = Pattern.compile(regex);
-        }
-
-        public boolean matches(String jobName) {
-            return this.pattern.matcher(jobName).matches();
-        }
-
-        public String getGenomeId() {
-            return this.genomeId;
-        }
-    }
-
-
     @Override
     protected void setDefaults() {
         this.readRegex = "(.+)_(R[12])_001\\.fastq";
@@ -158,11 +132,11 @@ public class RnaSeqProcessor extends BaseProcessor {
         this.wait = 7;
         this.maxIter = 100;
         this.maxTasks = 10;
+        this.sourceType = RnaSeqGroup.Type.PATRIC_DIR;
     }
 
     @Override
     protected boolean validateParms() throws IOException, ParseFailureException {
-        this.readPattern = Pattern.compile(this.readRegex);
         if (! this.workDir.isDirectory()) {
             log.info("Creating work directory {}.", this.workDir);
             FileUtils.forceMkdir(this.workDir);
@@ -172,19 +146,19 @@ public class RnaSeqProcessor extends BaseProcessor {
         // Insure the task limit is reasonable.
         if (this.limit < 100)
             throw new ParseFailureException("Invalid task limit.  The number should be enough to find all running tasks, and must be >= 100.");
-        // Verify the base genome table.
-        if (! this.baseFile.canRead())
-            throw new FileNotFoundException("Base-genome file " + this.baseFile + " not found or unreadable.");
-        try (TabbedLineReader baseStream = new TabbedLineReader(this.baseFile)) {
-            int patternIdx = baseStream.findField("pattern");
-            int genomeIdx = baseStream.findField("genome_id");
-            this.genomeMap = new ArrayList<GenomePattern>();
-            for (TabbedLineReader.Line line : baseStream) {
-                GenomePattern patternMatcher = new GenomePattern(line.get(patternIdx), line.get(genomeIdx));
-                this.genomeMap.add(patternMatcher);
-            }
-            log.info("{} base-genome patterns saved.", this.genomeMap.size());
-        }
+        // Set up the library source.
+        this.sourceGroup = this.sourceType.create(this);
+        // Verify the base genome ID.
+        Connection p3 = new Connection();
+        JsonObject genomeRecord = p3.getRecord(Connection.Table.GENOME, this.baseGenome, "genome_id,genome_name");
+        if (genomeRecord == null)
+            throw new ParseFailureException("Genome \"" + this.baseGenome + "\" does not exist.");
+        else
+            log.info("Base genome is {}: {}.", this.baseGenome, genomeRecord.getOrDefault("genome_name", "unknown"));
+        // Connect our parameters to the source group.
+        this.sourceGroup.setGenomeId(this.baseGenome);
+        log.info("PATRIC output directory is {}.", this.outDir);
+        this.sourceGroup.setOutDir(this.outDir);
         // Verify the wait interval.
         if (this.wait < 0)
             throw new ParseFailureException("Invalid wait interval " + Integer.toString(this.wait) + ". Must be >= 0.");
@@ -201,10 +175,19 @@ public class RnaSeqProcessor extends BaseProcessor {
         // Initialize the utility tasks.
         this.dirTask = new DirTask(this.workDir, this.workspace);
         this.statusTask = new StatusTask(this.limit, this.workDir, this.workspace);
-        // Get all the input files from the input directory.
-        this.scanInputDirectory();
+        // Get all the input RNA seq sources.
+        this.activeJobs = this.sourceGroup.getJobs(this.inDir);
         // Determine the completed jobs from the output directory.
         this.scanOutputDirectory();
+        // Now we have collected all the jobs.  Delete the ones that are incomplete.
+        log.info("{} jobs found in input directory.", this.activeJobs.size());
+        Iterator<Map.Entry<String, RnaJob>> iter = this.activeJobs.entrySet().iterator();
+        while (iter.hasNext()) {
+            RnaJob job = iter.next().getValue();
+            if (! job.isPrepared())
+                iter.remove();
+        }
+        log.info("{} jobs remaining after incomplete jobs removed.", this.activeJobs.size());
         // Now we have a list of active jobs and their current state.  Check for existing jobs.
         this.checkRunningJobs();
         // Loop until all jobs are done or we exceed the iteration limit.
@@ -384,58 +367,24 @@ public class RnaSeqProcessor extends BaseProcessor {
         return retVal;
     }
 
-    /**
-     * Compute the set of jobs for the input directory's files.
-     */
-    private void scanInputDirectory() {
-        log.info("Scanning input directory {}.", this.inDir);
-        List<DirEntry> inputFiles = this.dirTask.list(this.inDir);
-        this.activeJobs = new HashMap<String, RnaJob>((inputFiles.size() * 4 + 2) / 3);
-        for (DirEntry inputFile : inputFiles) {
-            if (inputFile.getType() == DirEntry.Type.READS) {
-                // Here we have a file that could be used as input.
-                Matcher m = this.readPattern.matcher(inputFile.getName());
-                if (m.matches()) {
-                    // Here the file is a good one.  Get the job for it.
-                    String jobName = m.group(1);
-                    boolean isLeft = m.group(2).contentEquals(this.leftId);
-                    RnaJob job = this.activeJobs.computeIfAbsent(jobName, x -> new RnaJob(x, this.inDir, this.outDir, this.computeGenome(x)));
-                    // Store the file.
-                    if (isLeft)
-                        job.setLeftFile(inputFile.getName());
-                    else
-                        job.setRightFile(inputFile.getName());
-                }
-            }
-        }
-        // Now we have collected all the jobs.  Delete the ones that lack one of the read files.
-        log.info("{} jobs found in input directory.", this.activeJobs.size());
-        Iterator<Map.Entry<String, RnaJob>> iter = this.activeJobs.entrySet().iterator();
-        while (iter.hasNext()) {
-            RnaJob job = iter.next().getValue();
-            if (! job.isPrepared())
-                iter.remove();
-        }
-        log.info("{} jobs remaining after incomplete file pairs removed.", this.activeJobs.size());
+    @Override
+    public String getPattern() {
+        return this.readRegex;
     }
 
-    /**
-     * @return the ID of the genome that should be used to align the specified job
-     *
-     * @param jobName	name of the job whose alignment genome is desired
-     */
-    private String computeGenome(String jobName) {
-        // Loop through the pattern list until we find a match.
-        String retVal = null;
-        Iterator<GenomePattern> iter = this.genomeMap.iterator();
-        while (iter.hasNext() && retVal == null) {
-            GenomePattern curr = iter.next();
-            if (curr.matches(jobName))
-                retVal = curr.getGenomeId();
-        }
-        if (retVal == null)
-            throw new IllegalArgumentException("No genome ID match found for job " + jobName + ".");
-        return retVal;
+    @Override
+    public String getLeftId() {
+        return this.leftId;
+    }
+
+    @Override
+    public File getWorkDir() {
+        return this.workDir;
+    }
+
+    @Override
+    public String getWorkspace() {
+        return this.workspace;
     }
 
 }

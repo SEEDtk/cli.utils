@@ -6,7 +6,6 @@ package org.theseed.rna.utils;
 import java.io.File;
 
 import org.theseed.cli.CliService;
-
 import com.github.cliftonlabs.json_simple.JsonArray;
 import com.github.cliftonlabs.json_simple.JsonObject;
 
@@ -36,9 +35,8 @@ public class TrimService extends CliService {
         this.parms = new JsonObject();
         this.parms.put("output_file", RnaJob.Phase.TRIM.getOutputName(job.getName()));
         this.parms.put("output_path", job.getOutDir());
-        JsonArray pairList = RnaJob.pairList(job.getLeftFile(), job.getRightFile());
-        this.parms.put("paired_end_libs", pairList);
         this.parms.put("recipe", recipe);
+        job.getSource().store(this.parms);
     }
 
     @Override
