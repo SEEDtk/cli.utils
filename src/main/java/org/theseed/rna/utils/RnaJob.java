@@ -272,4 +272,12 @@ public class RnaJob implements Comparable<RnaJob> {
         return this.name.compareTo(o.name);
     }
 
+    /**
+     * Denote this job has failed.
+     */
+    public void setFailed() {
+        this.taskId = null;
+        this.phase = Phase.DONE;
+    }
+
 }

@@ -57,7 +57,7 @@ public abstract class FpkmReporter implements AutoCloseable {
      * Enumeration of report formats
      */
     public static enum Type {
-        TEXT, EXCEL, CSV;
+        TEXT, EXCEL, CSV, QUALITY;
 
         public FpkmReporter create(OutputStream output, IParms processor) {
             FpkmReporter retVal = null;
@@ -70,6 +70,9 @@ public abstract class FpkmReporter implements AutoCloseable {
                 break;
             case CSV:
                 retVal = new TextFpkmReporter.CSV(output, processor);
+                break;
+            case QUALITY:
+                retVal = new QualityFpkmReporter(output, processor);
                 break;
             }
             return retVal;

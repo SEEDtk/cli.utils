@@ -22,6 +22,7 @@ import org.theseed.cli.DirEntry;
 import org.theseed.cli.DirTask;
 import org.theseed.cli.MkDirTask;
 import org.theseed.cli.StatusTask;
+import org.theseed.counters.CountMap;
 import org.theseed.p3api.Connection;
 import org.theseed.utils.BaseProcessor;
 import org.theseed.utils.ParseFailureException;
@@ -51,6 +52,7 @@ import com.github.cliftonlabs.json_simple.JsonObject;
  * --limit		limit when querying the PATRIC task list (must be large enough to capture all of the running tasks); default 1000
  * --maxTasks	maximum number of tasks to run at one time
  * --source		type of RNA Seq source; the default is PATRIC_DIR
+ * --retries	maximum number of retries per job
  *
  * @author Bruce Parrello
  *
@@ -72,6 +74,8 @@ public class RnaSeqProcessor extends BaseProcessor implements RnaSeqGroup.IParms
     private int waitInterval;
     /** RNA Seq source group */
     private RnaSeqGroup sourceGroup;
+    /** job retry counter */
+    private CountMap<String> retryCounts;
 
     // COMMAND-LINE OPTIONS
 
@@ -107,6 +111,10 @@ public class RnaSeqProcessor extends BaseProcessor implements RnaSeqGroup.IParms
     @Option(name = "--source", usage = "RNA Seq source type")
     private RnaSeqGroup.Type sourceType;
 
+    /** maximum number of retries per job */
+    @Option(name = "--retries", metaVar = "5", usage = "maximum retries per job")
+    private int maxRetries;
+
     /** base genome definition file */
     @Argument(index = 0, metaVar = "genome_id", usage = "ID of the base genome for this process", required = true)
     private String baseGenome;
@@ -132,6 +140,7 @@ public class RnaSeqProcessor extends BaseProcessor implements RnaSeqGroup.IParms
         this.wait = 7;
         this.maxIter = 100;
         this.maxTasks = 10;
+        this.maxRetries = 3;
         this.sourceType = RnaSeqGroup.Type.PATRIC_DIR;
     }
 
@@ -172,6 +181,8 @@ public class RnaSeqProcessor extends BaseProcessor implements RnaSeqGroup.IParms
 
     @Override
     protected void runCommand() throws Exception {
+        // Initialize the retry counter.
+        this.retryCounts = new CountMap<String>();
         // Initialize the utility tasks.
         this.dirTask = new DirTask(this.workDir, this.workspace);
         this.statusTask = new StatusTask(this.limit, this.workDir, this.workspace);
@@ -225,26 +236,36 @@ public class RnaSeqProcessor extends BaseProcessor implements RnaSeqGroup.IParms
         for (Map.Entry<String, String> taskEntry : taskMap.entrySet()) {
             // Get the task state and the associated job.
             String state = taskEntry.getValue();
-            RnaJob job = activeTasks.get(taskEntry.getKey());
+            String taskId = taskEntry.getKey();
+            RnaJob job = activeTasks.get(taskId);
+            String jobName = job.getName();
             switch (state) {
             case StatusTask.FAILED :
-                // Task failed.  Restart it.
-                log.warn("Job {} failed in phase {}.  Retrying.", job.getName(), job.getPhase());
-                job.startTask(this.workDir, this.workspace);
+                // Task failed.  Restart it if we haven't run out of retries.
+                int retries = this.retryCounts.count(jobName);
+                if (retries >= this.maxRetries) {
+                    log.error("Job {} failed in phase {} after {} retries.", jobName, job.getPhase(),
+                            retries);
+                    activeTasks.remove(taskId);
+                    job.setFailed();
+                } else {
+                    log.warn("Job {} failed in phase {}.  Retrying.", jobName, job.getPhase());
+                    job.startTask(this.workDir, this.workspace);
+                }
                 break;
             case StatusTask.COMPLETED :
                 // Task completed.  Move to the next phase.
-                log.info("Job {} completed phase {}.", job.getName(), job.getPhase());
+                log.info("Job {} completed phase {}.", jobName, job.getPhase());
                 boolean done = job.nextPhase();
                 // The job is no longer active.
-                activeTasks.remove(taskEntry.getKey());
+                activeTasks.remove(taskId);
                 // If it is not done, denote it needs a task.
                 if (! done)
                     needsTask.add(job);
                 break;
             default :
                 // Here the job is still in progress.
-                log.debug("Job {} still executing phase {}.", job.getName(), job.getPhase());
+                log.debug("Job {} still executing phase {}.", jobName, job.getPhase());
             }
         }
         int remaining = this.maxTasks - activeTasks.size();
@@ -356,9 +377,10 @@ public class RnaSeqProcessor extends BaseProcessor implements RnaSeqGroup.IParms
             if (job != null) {
                 // It is.  Check for failure.  Otherwise, update the state.
                 List<DirEntry> folderFiles = this.dirTask.list(this.outDir + "/." + jobFolder);
-                if (folderFiles.stream().anyMatch(x -> x.getName().contentEquals("JobFailed.txt")))
+                if (folderFiles.stream().anyMatch(x -> x.getName().contentEquals("JobFailed.txt"))) {
                     log.warn("Job {} folder {} contains failure data.", jobName, jobFolder);
-                else if (job.mergeState(nextPhase)) {
+                    this.retryCounts.count(jobName);
+                } else if (job.mergeState(nextPhase)) {
                     this.updateCounter++;
                     log.info("Job {} updated by completed task {}.", jobName, jobFolder);
                 }
