@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.theseed.p3api.Connection;
+import org.theseed.p3api.P3Connection;
 import org.theseed.proteins.kmers.reps.P3RepGenomeDb;
 import org.theseed.proteins.kmers.reps.RepGenomeDb;
 import org.theseed.utils.ParseFailureException;
@@ -38,7 +38,7 @@ public class GenomesBinReport extends BinReporter {
     /** representative-genome database */
     private RepGenomeDb repgens;
     /** PATRIC connection */
-    private Connection p3;
+    private P3Connection p3;
 
     /**
      * This dinky class tracks the data for a single genome.  It is sorted by
@@ -123,7 +123,7 @@ public class GenomesBinReport extends BinReporter {
         if (repdbFile == null)
             throw new ParseFailureException("Repgen database required for genome report.");
         this.repgens = RepGenomeDb.load(repdbFile);
-        this.p3 = new Connection();
+        this.p3 = new P3Connection();
     }
 
     @Override

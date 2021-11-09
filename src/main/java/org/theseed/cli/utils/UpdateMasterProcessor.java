@@ -18,7 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.genome.Genome;
 import org.theseed.genome.GenomeMultiDirectory;
-import org.theseed.p3api.Connection;
+import org.theseed.p3api.P3Connection;
 import org.theseed.p3api.P3Genome;
 import org.theseed.utils.BaseProcessor;
 import org.theseed.utils.ParseFailureException;
@@ -52,7 +52,7 @@ public class UpdateMasterProcessor extends BaseProcessor {
     /** scale faster for list size */
     private static final double LOAD_FACTOR = 1.3;
     /** PATRIC connection */
-    private Connection p3;
+    private P3Connection p3;
 
     // COMMAND-LINE OPTIONS
 
@@ -77,12 +77,12 @@ public class UpdateMasterProcessor extends BaseProcessor {
         log.info("Loading master directory {}.", this.p3MasterDir);
         this.pMaster = new GenomeMultiDirectory(this.p3MasterDir);
         // Get the PATRIC genome list.  We convert it to an ID -> name map, keeping the first if there is a conflict.
-        this.p3 = new Connection();
+        this.p3 = new P3Connection();
         int predicted = (int) (LOAD_FACTOR * this.pMaster.size());
         List<JsonObject> objects = new ArrayList<JsonObject>(predicted);
         p3.addAllProkaryotes(objects);
-        this.pGenomes = objects.stream().collect(Collectors.toMap(x -> Connection.getString(x, "genome_id"),
-                x -> Connection.getString(x, "genome_name"), (x1,x2) -> x1));
+        this.pGenomes = objects.stream().collect(Collectors.toMap(x -> P3Connection.getString(x, "genome_id"),
+                x -> P3Connection.getString(x, "genome_name"), (x1,x2) -> x1));
         log.info("{} genomes found in PATRIC.", this.pGenomes.size());
         return true;
     }

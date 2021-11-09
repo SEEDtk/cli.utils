@@ -23,7 +23,7 @@ import org.theseed.cli.DirTask;
 import org.theseed.cli.MkDirTask;
 import org.theseed.cli.StatusTask;
 import org.theseed.counters.CountMap;
-import org.theseed.p3api.Connection;
+import org.theseed.p3api.P3Connection;
 import org.theseed.utils.BaseProcessor;
 import org.theseed.utils.ParseFailureException;
 
@@ -158,8 +158,8 @@ public class RnaSeqProcessor extends BaseProcessor implements RnaSeqGroup.IParms
         // Set up the library source.
         this.sourceGroup = this.sourceType.create(this);
         // Verify the base genome ID.
-        Connection p3 = new Connection();
-        JsonObject genomeRecord = p3.getRecord(Connection.Table.GENOME, this.baseGenome, "genome_id,genome_name");
+        P3Connection p3 = new P3Connection();
+        JsonObject genomeRecord = p3.getRecord(P3Connection.Table.GENOME, this.baseGenome, "genome_id,genome_name");
         if (genomeRecord == null)
             throw new ParseFailureException("Genome \"" + this.baseGenome + "\" does not exist.");
         else
