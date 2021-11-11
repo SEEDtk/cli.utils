@@ -33,11 +33,6 @@
       <version>4.13.1</version>
       <scope>test</scope>
     </dependency>
-    <dependency>
-      <groupId>org.theseed</groupId>
-      <artifactId>shared</artifactId>
-      <version>1.0.0</version>
-    </dependency>
     <!-- https://mvnrepository.com/artifact/args4j/args4j -->
     <dependency>
         <groupId>args4j</groupId>
@@ -76,6 +71,11 @@
         <version>1.2.3</version>
     </dependency>
     <dependency>
+      <groupId>com.github.cliftonlabs</groupId>
+      <artifactId>json-simple</artifactId>
+      <version>3.1.0</version>
+    </dependency>
+    <dependency>
         <groupId>org.apache.poi</groupId>
         <artifactId>poi</artifactId>
         <version>5.0.0</version>
@@ -84,6 +84,12 @@
         <groupId>org.apache.poi</groupId>
         <artifactId>poi-ooxml</artifactId>
         <version>5.0.0</version>
+       <exclusions>
+            <exclusion>
+                <groupId>xml-apis</groupId>
+                <artifactId>xml-apis</artifactId>
+            </exclusion>
+        </exclusions>
     </dependency>
   </dependencies>
 </project>

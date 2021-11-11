@@ -31,7 +31,7 @@ public class TestBinParse {
         String htmlString = FileUtils.readFileToString(targetFile, Charset.defaultCharset());
         Matcher m = BinReportProcessor.TABLE_PATTERN.matcher(htmlString);
         assertThat(m.find(), isTrue());
-        String table = m.group(1);
+        String table = m.group(2);
         assertThat(table, startsWith("<table"));
         assertThat(table, endsWith("</table>"));
         assertThat(table.substring(5), not(containsString("<table")));
