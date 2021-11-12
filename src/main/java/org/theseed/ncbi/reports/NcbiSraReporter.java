@@ -54,6 +54,9 @@ public class NcbiSraReporter extends NcbiTableReporter {
             "accession", "run_id", "total_spots", "total_spots",
             "total_bases", "total_bases", "size", "size"
             );
+    /** map for tag values in SAMPLE node */
+    private static final Map<String, String> SAMPLE_TAGS = Map.of(
+            "SCIENTIFIC_NAME", "organism", "TAXON_ID", "tax_id");
     /** map for attribute values in POOL node */
     private static final Map<String, String> POOL_ATTRIBUTES = Map.of(
             "organism", "organism", "tax_id", "tax_id"
@@ -95,10 +98,16 @@ public class NcbiSraReporter extends NcbiTableReporter {
             Element studyLinks = XmlUtils.findFirstByTagName(record, "STUDY_LINKS");
             if (studyLinks != null)
                 this.processKeyValuePairs(studyLinks, "DB", "ID", STUDY_LINKS_KEYS, experimentOutputMap);
-            Element pool = XmlUtils.findFirstByTagName(record, "POOL");
-            if (pool != null)
-                this.processAttributes(pool, POOL_ATTRIBUTES, experimentOutputMap);
-            Element sampleAttributes = XmlUtils.findFirstByTagName(record, "SAMPLE_ATTRIBUTES");
+            Element sample = XmlUtils.findFirstByTagName(record, "SAMPLE");
+            if (sample != null)
+                this.processTags(sample, SAMPLE_TAGS, experimentOutputMap);
+            if (StringUtils.isBlank(experimentOutputMap.get("organism"))) {
+                // We didn't find the sample name, so we need to look for alternate data in the pool.
+                Element pool = XmlUtils.findFirstByTagName(record, "POOL");
+                if (pool != null)
+                    this.processAttributes(pool, POOL_ATTRIBUTES, experimentOutputMap);
+            }
+            Element sampleAttributes = XmlUtils.findFirstByTagName(sample, "SAMPLE_ATTRIBUTES");
             if (sampleAttributes != null)
                 this.processKeyValuePairs(sampleAttributes, "TAG", "VALUE", SAMPLE_ATTRIBUTES_KEYS,
                         experimentOutputMap);

@@ -48,6 +48,7 @@ import org.w3c.dom.Element;
  * -v	display more frequent log messages
  * -o	report output file, if not STDOUT
  * -d	date code for type of date in "--since" (default PDAT)
+ * -b	number of records for each query batch
  *
  * --since		minimum date for results (default is to return all results)
  * --sinceFile	name of a file to be used to track dates.  If the file exists, it will contain
@@ -74,6 +75,10 @@ public class NcbiQueryProcessor extends BaseReportProcessor implements NcbiTable
 
     // COMMAND-LINE OPTIONS
 
+    /** query batch size */
+    @Option(name = "--batchSize", aliases = { "-b" }, metaVar = "100", usage = "number of records per query batch")
+    private int batchSize;
+
     /** minimum date for results */
     @Option(name = "--since", metaVar = "2018-10-20", usage = "date in YYYY-MM-DD format to limit query to recent records")
     private String minDateString;
@@ -83,7 +88,7 @@ public class NcbiQueryProcessor extends BaseReportProcessor implements NcbiTable
     private File minDateFile;
 
     /** type of date for minimum-date option */
-    @Option(name = "--dType", aliases = { "-d" }, metaVar = "mdat", usage = "type of date for recent-record limit")
+    @Option(name = "--dateType", aliases = { "-d" }, metaVar = "mdat", usage = "type of date for recent-record limit")
     private String dateType;
 
     /** report type */
@@ -100,6 +105,7 @@ public class NcbiQueryProcessor extends BaseReportProcessor implements NcbiTable
         this.minDateString = null;
         this.dateType = "pdat";
         this.filters = null;
+        this.batchSize = 200;
     }
 
     @Override
@@ -107,8 +113,12 @@ public class NcbiQueryProcessor extends BaseReportProcessor implements NcbiTable
         try {
             // Create the reporting object.
             this.reporter = this.reportType.create(this);
-            // Get the validation set for the query filters.
+            // Verify the batch size.
             this.ncbi = new NcbiConnection();
+            if (this.batchSize < 1)
+                throw new ParseFailureException("Batch size must be greater than 0.");
+            this.ncbi.setChunkSize(this.batchSize);
+            // Get the validation set for the query filters.
             NcbiTable table = this.reporter.getTable();
             // Create the query.
             this.query = new NcbiQuery(table);
