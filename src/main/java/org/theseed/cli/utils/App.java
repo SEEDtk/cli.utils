@@ -5,7 +5,6 @@ import java.util.Arrays;
 import org.theseed.bin.utils.BinReportProcessor;
 import org.theseed.bin.utils.QzaReportProcessor;
 import org.theseed.bin.utils.XMatrixProcessor;
-import org.theseed.ncbi.utils.NcbiQueryProcessor;
 import org.theseed.rna.utils.FpkmAllProcessor;
 import org.theseed.rna.utils.FpkmSummaryProcessor;
 import org.theseed.rna.utils.RnaCopyProcessor;
@@ -33,7 +32,6 @@ import org.theseed.utils.BaseProcessor;
  * gtoRoles		get proteins from genomes based on roles
  * qzaReport	determine bin composition in trimmed Amplicon database
  * updateMaster	update a master PATRIC database:  remove obsolete genomes and add the new ones
- * ncbiQuery	retrieve data from the NCBI Entrez database
  */
 public class App
 {
@@ -86,9 +84,6 @@ public class App
             break;
         case "updateMaster" :
             processor = new UpdateMasterProcessor();
-            break;
-        case "ncbiQuery" :
-            processor = new NcbiQueryProcessor();
             break;
         default:
             throw new RuntimeException("Invalid command " + command);
