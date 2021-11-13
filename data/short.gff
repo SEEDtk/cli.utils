@@ -1,0 +1,14 @@
+##gff-version 3
+#!gff-spec-version 1.21
+#!processor NCBI annotwriter
+#!genome-build R64
+#!genome-build-accession NCBI_Assembly:GCF_000146045.2
+#!annotation-source SGD R64-2-1
+##sequence-region NC_001133.9 1 230218
+##species https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=559292
+NC_001133.9	RefSeq	region	1	230218	.	+	.	ID=NC_001133.9:1..230218;Dbxref=taxon:559292;Name=I;chromosome=I;gbkey=Src;genome=chromosome;mol_type=genomic DNA;strain=S288C
+NC_001133.9	RefSeq	telomere	1	801	.	-	.	ID=id-NC_001133.9:1..801;Dbxref=SGD:S000028862;Note=TEL01L%3B Telomeric region on the left arm of Chromosome I%3B composed of an X element core sequence%2C X element combinatorial repeats%2C and a short terminal stretch of telomeric repeats;gbkey=telomere
+NC_001133.9	RefSeq	origin_of_replication	707	776	.	+	.	ID=id-NC_001133.9:707..776;Dbxref=SGD:S000121252;Note=ARS102~Autonomously Replicating Sequence;gbkey=rep_origin
+NC_001133.9	RefSeq	gene	1807	2169	.	-	.	ID=gene-YAL068C;Dbxref=GeneID:851229;Name=PAU8;end_range=2169,.;gbkey=Gene;gene=PAU8;gene_biotype=protein_coding;locus_tag=YAL068C;partial=true;start_range=.,1807
+NC_001133.9	RefSeq	mRNA	1807	2169	.	-	.	ID=rna-NM_001180043.1;Parent=gene-YAL068C;Dbxref=GeneID:851229,Genbank:NM_001180043.1;Name=NM_001180043.1;end_range=2169,.;gbkey=mRNA;gene=PAU8;locus_tag=YAL068C;partial=true;product=seripauperin PAU8;start_range=.,1807;transcript_id=NM_001180043.1
+NC_001133.9	RefSeq	CDS	1807	2169	.	-	0	ID=cds-NP_009332.1;Parent=rna-NM_001180043.1;Dbxref=SGD:S000002142,GeneID:851229,Genbank:NP_009332.1;Name=NP_009332.1;Note=hypothetical protein%3B member of the seripauperin multigene family encoded mainly in subtelomeric regions;experiment=EXISTENCE:mutant phenotype:GO:0030437 ascospore formation [PMID:12586695];gbkey=CDS;gene=PAU8;locus_tag=YAL068C;product=seripauperin PAU8;protein_id=NP_009332.1

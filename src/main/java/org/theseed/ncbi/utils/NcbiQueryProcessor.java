@@ -18,7 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.io.MarkerFile;
 import org.theseed.ncbi.NcbiConnection;
-import org.theseed.ncbi.NcbiQuery;
+import org.theseed.ncbi.NcbiFilterQuery;
 import org.theseed.ncbi.NcbiTable;
 import org.theseed.ncbi.XmlException;
 import org.theseed.ncbi.reports.NcbiTableReporter;
@@ -69,7 +69,7 @@ public class NcbiQueryProcessor extends BaseReportProcessor implements NcbiTable
     /** reporting object */
     private NcbiTableReporter reporter;
     /** query to run */
-    private NcbiQuery query;
+    private NcbiFilterQuery query;
     /** regex pattern for valid dates */
     private static final Pattern DATE_PATTERN = Pattern.compile("\\d+(?:-\\d+(?:\\d+)?)?");
 
@@ -121,7 +121,7 @@ public class NcbiQueryProcessor extends BaseReportProcessor implements NcbiTable
             // Get the validation set for the query filters.
             NcbiTable table = this.reporter.getTable();
             // Create the query.
-            this.query = new NcbiQuery(table);
+            this.query = new NcbiFilterQuery(table);
             // If we have filters, we need to do a bunch of setup to initialize the query.
             if (filters != null) {
                 if (filters.size() % 2 != 0)
@@ -138,7 +138,7 @@ public class NcbiQueryProcessor extends BaseReportProcessor implements NcbiTable
                 }
                 // Add the date qualification.  The date string is used first if it exists.
                 if (this.minDateString != null) {
-                    NcbiQuery.validateDateType(dateType);
+                    NcbiFilterQuery.validateDateType(dateType);
                     if (! DATE_PATTERN.matcher(this.minDateString).matches())
                         throw new ParseFailureException("Invalid since-date.");
                     // We have to do a funny sort of parsing here, because we allow specifying just the
@@ -161,7 +161,7 @@ public class NcbiQueryProcessor extends BaseReportProcessor implements NcbiTable
                     if (parts.length != 2)
                         throw new IOException("Since-date file has invalid data.");
                     this.dateType = parts[0];
-                    NcbiQuery.validateDateType(parts[0]);
+                    NcbiFilterQuery.validateDateType(parts[0]);
                     LocalDate minDate = LocalDate.parse(parts[1]);
                     log.info("Restricting query to results with {} >= {}.", this.dateType, minDate.toString());
                     this.query.since(dateType, minDate);

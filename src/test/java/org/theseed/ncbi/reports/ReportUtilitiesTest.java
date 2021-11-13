@@ -10,7 +10,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.theseed.ncbi.XmlException;
 import org.theseed.ncbi.XmlUtils;
 import org.w3c.dom.Document;

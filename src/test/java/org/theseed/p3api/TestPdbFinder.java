@@ -9,7 +9,7 @@ import static org.hamcrest.Matchers.*;
 import java.io.IOException;
 
 import org.apache.http.client.ClientProtocolException;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Bruce Parrello

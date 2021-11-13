@@ -17,7 +17,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.jsoup.select.Evaluator;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Bruce Parrello

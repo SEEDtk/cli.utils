@@ -18,18 +18,20 @@ import org.theseed.cli.DirEntry;
 import org.theseed.cli.DirTask;
 import org.theseed.io.LineReader;
 
-import junit.framework.TestCase;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * @author Bruce Parrello
  *
  */
-public class TestDirectory extends TestCase {
+public class TestDirectory {
 
     /**
      * Test directory entries
      * @throws IOException
      */
+    @Test
     public void testDirEntry() throws IOException {
         try (LineReader reader = new LineReader(new File("data", "dir.tbl"))) {
             DirEntry entry = DirEntry.create(reader.next());
@@ -62,6 +64,7 @@ public class TestDirectory extends TestCase {
         }
     }
 
+    @Test
     public void testDirTask() {
         DirTask dirTask = new DirTask(new File("data"), "rastuser25@patricbrc.org");
         List<DirEntry> dirList = dirTask.list("/rastuser25@patricbrc.org/Binning.Webinar");
