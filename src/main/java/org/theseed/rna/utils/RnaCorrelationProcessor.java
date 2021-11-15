@@ -19,6 +19,7 @@ import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.theseed.genome.Feature;
 import org.theseed.rna.BaselineComputer;
 import org.theseed.rna.ExpressionConverter;
 import org.theseed.rna.IBaselineParameters;
@@ -43,6 +44,7 @@ import org.theseed.utils.ParseFailureException;
  * --baseline	method for computing triage baseline (TRIMEAN, SAMPLE, FILE)
  * --baseId		ID of the base sample for a SAMPLE baseline
  * --baseFile	name of file containing baseline data for a FILE baseline
+ * --minCorr	minimum absolute value of pearson correlation for output
  *
  * @author Bruce Parrello
  *
@@ -85,6 +87,10 @@ public class RnaCorrelationProcessor extends BaseProcessor implements IBaselineP
     @Option(name = "--baseId", usage = "sample containing baseline values for triage type SAMPLE output")
     private String baseSampleId;
 
+    /** minimum correlation value for output */
+    @Option(name = "--minCorr", usage = "minimum absolute value of pearson correlation for output")
+    private double minCorr;
+
     /** file containing the RNA database */
     @Argument(index = 0, metaVar = "rnaData.ser", usage = "RNA database file")
     private File rnaFile;
@@ -96,6 +102,7 @@ public class RnaCorrelationProcessor extends BaseProcessor implements IBaselineP
         this.baseFile = null;
         this.baseSampleId = null;
         this.outFile = null;
+        this.minCorr = 0.0;
     }
 
     @Override
@@ -111,6 +118,9 @@ public class RnaCorrelationProcessor extends BaseProcessor implements IBaselineP
             log.info("Output will be to {}.", this.outFile);
             this.outStream = new FileOutputStream(this.outFile);
         }
+        // Verify the minimum correlation.
+        if (this.minCorr > 1.0 || this.minCorr < 0.0)
+            throw new ParseFailureException("Minimum correlation value must be between 0.0 and 1.0.");
         // Verify the baseline data and create the computer.
         this.baselineComputer = BaselineComputer.validateAndCreate(this, this.baselineType);
         this.converter = new TriageExpressionConverter(this);
@@ -136,7 +146,7 @@ public class RnaCorrelationProcessor extends BaseProcessor implements IBaselineP
             Arrays.sort(rowList);
             // Start the output.
             try (PrintWriter writer = new PrintWriter(this.outStream)) {
-                writer.println("fid1\tgene_name1\tfid2\tgene_name2\tpearson\tmatch");
+                writer.println("key\tfid1\tgene_name1\tfid2\tgene_name2\tpearson\tmatch");
                 // Now loop through the row array.  For each feature, we perform the two comparisons between it and every
                 // subsequent feature.
                 for (int i = 0; i < rowList.length; i++) {
@@ -150,10 +160,14 @@ public class RnaCorrelationProcessor extends BaseProcessor implements IBaselineP
                         String jFid = jFeat.getId();
                         // Compute the correlations.
                         double pc = getPearson(iLevels, this.levelMap.get(jFid));
-                        double matchPct = this.getPercent(iTriage, this.triageMap.get(jFid), pc);
-                        // Write the data.
-                        writer.format("%s\t%s\t%s\t%s\t%8.4f\t%8.2f%n", iFid, iFeat.getGene(), jFid, jFeat.getGene(),
-                                pc, matchPct);
+                        // Only proceed if it is big enough to output.
+                        if (Math.abs(pc) >= this.minCorr) {
+                            double matchPct = this.getPercent(iTriage, this.triageMap.get(jFid), pc);
+                            String key = Feature.pairKey(iFid, jFid);
+                            // Write the data.
+                            writer.format("%s\t%s\t%s\t%s\t%s\t%8.4f\t%8.2f%n", key, iFid, iFeat.getGene(),
+                                    jFid, jFeat.getGene(), pc, matchPct);
+                        }
                     }
                 }
             }
@@ -163,7 +177,8 @@ public class RnaCorrelationProcessor extends BaseProcessor implements IBaselineP
         }
     }
 
-   /**
+
+/**
     * Create a map from each feature ID to (1) an array of -1,0,+1 values representing whether the expression value
     * is above or below the baseline and (2) an array of actual expression values.  Missing values are stored as NaN.
     */
