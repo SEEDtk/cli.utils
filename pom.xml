@@ -68,7 +68,7 @@
     <dependency>
         <groupId>ch.qos.logback</groupId>
         <artifactId>logback-classic</artifactId>
-        <version>1.2.3</version>
+        <version>1.2.10</version>
     </dependency>
     <dependency>
       <groupId>com.github.cliftonlabs</groupId>
@@ -79,6 +79,16 @@
         <groupId>org.apache.poi</groupId>
         <artifactId>poi</artifactId>
         <version>5.0.0</version>
+    </dependency>
+    <dependency>
+        <groupId>org.theseed</groupId>
+        <artifactId>p3api</artifactId>
+        <version>0.0.1</version>
+    </dependency>
+    <dependency>
+        <groupId>org.theseed</groupId>
+        <artifactId>shared</artifactId>
+        <version>1.0.0</version>
     </dependency>
     <dependency>
         <groupId>org.apache.poi</groupId>
