@@ -5,7 +5,6 @@ package org.theseed.bin.utils;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
-import static org.theseed.test.Matchers.*;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -30,7 +29,7 @@ public class TestBinParse {
         File targetFile = new File("data", "BinningReport.html");
         String htmlString = FileUtils.readFileToString(targetFile, Charset.defaultCharset());
         Matcher m = BinReportProcessor.TABLE_PATTERN.matcher(htmlString);
-        assertThat(m.find(), isTrue());
+        assertThat(m.find(), equalTo(true));
         String table = m.group(2);
         assertThat(table, startsWith("<table"));
         assertThat(table, endsWith("</table>"));

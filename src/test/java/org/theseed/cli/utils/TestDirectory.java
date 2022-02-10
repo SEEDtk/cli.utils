@@ -4,7 +4,6 @@
 package org.theseed.cli.utils;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.theseed.test.Matchers.*;
 import static org.hamcrest.Matchers.*;
 
 import java.io.File;
@@ -110,7 +109,7 @@ public class TestDirectory {
         List<String> names = Arrays.stream(copied).map(f -> f.getName()).collect(Collectors.toList());
         assertThat(names, containsInAnyOrder("coupling10.test.tbl", "coupling200.log", "couplings200.random.weighted.tbl"));
         for (File copy : copied)
-            assertThat(copy.getAbsolutePath(), copy.canRead(), isTrue());
+            assertThat(copy.getAbsolutePath(), copy.canRead(), equalTo(true));
     }
 
 }
