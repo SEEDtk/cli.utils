@@ -31,7 +31,7 @@ import org.theseed.utils.ParseFailureException;
  * specifiers arranged in pairs.  The first item in each pair is a label value and the second is the
  * file name for a bin report.  So, for example
  *
- * 		cli.utils xmatrix parkinsons parkReport.tbl alzheimers alzReport.tbl control controlReport.tbl
+ * 		cli.utils xmatrix outDir parkinsons parkReport.tbl alzheimers alzReport.tbl control controlReport.tbl
  *
  * would assign the samples in "parkReport.tbl" the label "parkinsons", the samples in "alzReport.tbl" the
  * label "alzheimers", and the samples is "controlReport.tbl" the label "control".
