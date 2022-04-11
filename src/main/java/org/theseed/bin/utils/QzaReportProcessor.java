@@ -255,24 +255,24 @@ public class QzaReportProcessor extends BaseProcessor {
                     // the sample in the progress file.
                     this.progressStream.format("%s\t%d%n", sampleID, keptCount);
                     if (keptCount > 0)
-                    	writer.flush();
+                        writer.flush();
                     else
-                    	this.badSampleCount++;
+                        this.badSampleCount++;
                     // Always flush the progress stream.
                     this.progressStream.flush();
                     log.info("{} representatives kept out of {} found in sample {}.", keptCount, foundCount, sampleID);
-                    log.info("PROGRESS:  {} samples processed, {} were bad.", this.processed.size(), this.badSampleCount);
                     // Clear the counters for next time.
                     hitCounts.clear();
                     sampleCount++;
+                    log.info("PROGRESS:  {} samples processed, {} were bad.", sampleCount, this.badSampleCount);
                 }
             }
             log.info("All done. {} samples processed in {} files, {} were bad.", sampleCount, this.inFiles.length,
-            		this.badSampleCount);
+                    this.badSampleCount);
         } finally {
-        	// Insure we close the progress output file.
-        	if (this.progressStream != null)
-        		this.progressStream.close();
+            // Insure we close the progress output file.
+            if (this.progressStream != null)
+                this.progressStream.close();
         }
     }
 
@@ -291,7 +291,7 @@ public class QzaReportProcessor extends BaseProcessor {
         this.processed = new HashSet<String>((XMatrixProcessor.EXPECTED_SAMPLES * 4 + 2) / 3);
         // Is this a new run?
         if (! this.resumeFlag) {
-        	log.info("Initializing for new output to file {}.", this.outFile);
+            log.info("Initializing for new output to file {}.", this.outFile);
             // Here we have a brand-new file.  Write the header line. Note only "sample_id"
             // and "repgen_id" are used by the xmatrix generator.  The count is the number
             // of reads that the representative genome hit.
@@ -309,14 +309,14 @@ public class QzaReportProcessor extends BaseProcessor {
             log.info("Resuming output to file {}.", this.outFile);
             // Get all the samples we've already processed.
             try (TabbedLineReader progressStream = new TabbedLineReader(this.progressFile)) {
-            	int sampleCol = progressStream.findField("sample_id");
-            	int countCol = progressStream.findField("reps");
-            	for (TabbedLineReader.Line line : progressStream) {
-            		String sampleId = line.get(sampleCol);
-            		int count = line.getInt(countCol);
-            		if (count == 0) this.badSampleCount++;
-            		this.processed.add(sampleId);
-            	}
+                int sampleCol = progressStream.findField("sample_id");
+                int countCol = progressStream.findField("reps");
+                for (TabbedLineReader.Line line : progressStream) {
+                    String sampleId = line.get(sampleCol);
+                    int count = line.getInt(countCol);
+                    if (count == 0) this.badSampleCount++;
+                    this.processed.add(sampleId);
+                }
             }
             log.info("{} samples already processed. {} were bad.", this.processed.size(), this.badSampleCount);
             // Set up to append to the progress stream.
