@@ -15,6 +15,7 @@ import org.theseed.utils.BaseProcessor;
  * gtoRoles		get proteins from genomes based on roles
  * qzaReport	determine bin composition in trimmed Amplicon database
  * updateMaster	update a master PATRIC database:  remove obsolete genomes and add the new ones
+ * xTotals		output the total value of each column in an xmatrix
  */
 public class App
 {
@@ -40,6 +41,9 @@ public class App
             break;
         case "updateMaster" :
             processor = new UpdateMasterProcessor();
+            break;
+        case "xTotals" :
+            processor = new XTotalProcessor();
             break;
         default:
             throw new RuntimeException("Invalid command " + command);
