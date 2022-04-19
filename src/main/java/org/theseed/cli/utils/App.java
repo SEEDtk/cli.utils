@@ -16,6 +16,7 @@ import org.theseed.utils.BaseProcessor;
  * qzaReport	determine bin composition in trimmed Amplicon database
  * updateMaster	update a master PATRIC database:  remove obsolete genomes and add the new ones
  * xTotals		output the total value of each column in an xmatrix
+ * roleId		add role IDs to an input file
  */
 public class App
 {
@@ -41,6 +42,9 @@ public class App
             break;
         case "updateMaster" :
             processor = new UpdateMasterProcessor();
+            break;
+        case "roleId" :
+            processor = new RoleIdProcessor();
             break;
         case "xTotals" :
             processor = new XTotalProcessor();
