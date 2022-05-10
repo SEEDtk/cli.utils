@@ -12,6 +12,7 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -31,6 +32,7 @@ import org.theseed.cli.CopyTask;
 import org.theseed.cli.DirEntry;
 import org.theseed.cli.DirTask;
 import org.theseed.cli.PatricException;
+import org.theseed.io.TabbedLineReader;
 import org.theseed.reports.BinReporter;
 import org.theseed.utils.BaseProcessor;
 import org.theseed.utils.ParseFailureException;
@@ -52,6 +54,8 @@ import org.theseed.utils.ParseFailureException;
  * --workDir	working directory for temporary files (the default is "Temp" in the current directory)
  * --format		type of report desired (bin counts, good genomes)
  * --all		if specified, both good and bad bin IDs will be displayed; the default is to display only good bins
+ * --filter		if specified, the name of a file containing job IDs in the first column; only those jobs
+ * 				will be processed
  *
  * @author Bruce Parrello
  *
@@ -63,6 +67,8 @@ public class BinReportProcessor extends BaseProcessor implements BinReporter.IPa
     protected static Logger log = LoggerFactory.getLogger(BinReportProcessor.class);
     /** output stream */
     private OutputStream outStream;
+    /** set of job IDs to use, or NULL to use all */
+    private Set<String> jobSet;
     /** match pattern for the bin counts */
     private static final Pattern COUNT_PATTERN = Pattern.compile("<p>(\\d+) <a href=\"#goodList\">good bins</a> and (\\d+) <a href=\"#badList\">bad bins</a> were found");
     /** match pattern for a bin table */
@@ -88,6 +94,10 @@ public class BinReportProcessor extends BaseProcessor implements BinReporter.IPa
     @Option(name = "--all", usage = "if specified, both good and bad bin details will be output")
     private boolean allFlag;
 
+    /** if specified, the name of a file containing job IDs in the first column */
+    @Option(name = "--filter", metaVar = "jobList.tbl", usage = "if specified, the name of a tab-delimited file with headers containing job IDs in the first column")
+    private File filterFile;
+
     /** input directory */
     @Argument(index = 0, metaVar = "inDir", usage = "input directory in PATRIC workspace", required = true)
     private String inDir;
@@ -107,6 +117,7 @@ public class BinReportProcessor extends BaseProcessor implements BinReporter.IPa
         this.outFile = null;
         this.allFlag = false;
         this.repgenFile = null;
+        this.filterFile = null;
     }
 
     @Override
@@ -125,6 +136,13 @@ public class BinReportProcessor extends BaseProcessor implements BinReporter.IPa
         } else {
             log.info("Output will be to {}.", this.outFile);
             this.outStream = new FileOutputStream(this.outFile);
+        }
+        if (this.filterFile == null) {
+            log.info("All jobs in {} will be processed.", this.inDir);
+            this.jobSet = null;
+        } else {
+            this.jobSet = TabbedLineReader.readSet(this.filterFile, "1");
+            log.info("{} jobs found in filter file {}.", this.jobSet.size(), this.filterFile);
         }
         return true;
     }
@@ -148,66 +166,70 @@ public class BinReportProcessor extends BaseProcessor implements BinReporter.IPa
             for (DirEntry dir : dirList) {
                 // Construct the binning report name.
                 String sampleName = dir.getName();
-                // Only process if this is a job directory.
+                // Only process if this is a job directory and it passes the filter.
                 if (sampleName.startsWith(".")) {
                     String binningReportName = this.inDir + "/" + sampleName + "/BinningReport.html";
                     // Chop off the dot to get the actual sample ID.
                     String sampleId = sampleName.substring(1);
-                    List<List<String>> binIds = Arrays.asList(new ArrayList<String>(), new ArrayList<String>());
-                    // Start by trying to get the binning report.
-                    try {
-                        copyTask.copyRemoteFile(binningReportName, targetFile);
-                        // Search the binning report for the desired bin counts.
-                        String htmlString = FileUtils.readFileToString(targetFile, Charset.defaultCharset());
-                        Matcher m = COUNT_PATTERN.matcher(htmlString);
-                        if (! m.find())
-                            log.warn("No bin counts found for sample {}.", sampleId);
-                        else {
-                            m = BinReportProcessor.TABLE_PATTERN.matcher(htmlString);
-                            while (m.find()) {
-                                int type = (m.group(1).contentEquals("good") ? 1 : 0);
-                                log.info("Searching for {}-bin genome IDs in sample {}.", m.group(1), sampleId);
-                                String table = m.group(2);
-                                // Parse the table HTML.
-                                Document doc = Jsoup.parse(table);
-                                // Loop through the table rows, keeping the genome IDs.
-                                Elements rows = doc.select(new Evaluator.Tag("tr"));
-                                for (Element row : rows) {
-                                    Elements cells = row.select(new Evaluator.Tag("td"));
-                                    // Only proceed if this table row has data cells (not headers).
-                                    if (cells.size() >= 3) {
-                                        // The second cell contains the genome ID as text inside a link.
-                                        // The first cell contains the score in the same way.  The
-                                        // third cell contains the genome name.  The fourth contains
-                                        // the reference genome ID.  The 11th contains the DNA size.
-                                        Element cell = cells.get(1);
-                                        Element link = cell.selectFirst(LINK_FINDER);
-                                        String genomeId = link.text();
-                                        binIds.get(type).add(genomeId);
-                                        cell = cells.get(0);
-                                        link = cell.selectFirst(LINK_FINDER);
-                                        double score = Double.valueOf(link.text());
-                                        String name = cells.get(2).text();
-                                        cell = cells.get(3);
-                                        link = cell.selectFirst(LINK_FINDER);
-                                        String refId;
-                                        if (link == null) {
-                                            log.warn("No reference genome found for {} in {}.", genomeId, sampleId);
-                                            refId = "";
-                                        } else
-                                            refId = link.text();
-                                        cell = cells.get(10);
-                                        int dnaSize = Integer.valueOf(cell.text());
-                                        reporter.binGenome(sampleId, type, genomeId, score, name, refId, dnaSize);
+                    if (this.jobSet != null && ! this.jobSet.contains(sampleId))
+                        log.info("Skipping sample {} due to fiilter.", sampleId);
+                    else {
+                        List<List<String>> binIds = Arrays.asList(new ArrayList<String>(), new ArrayList<String>());
+                        // Start by trying to get the binning report.
+                        try {
+                            copyTask.copyRemoteFile(binningReportName, targetFile);
+                            // Search the binning report for the desired bin counts.
+                            String htmlString = FileUtils.readFileToString(targetFile, Charset.defaultCharset());
+                            Matcher m = COUNT_PATTERN.matcher(htmlString);
+                            if (! m.find())
+                                log.warn("No bin counts found for sample {}.", sampleId);
+                            else {
+                                m = BinReportProcessor.TABLE_PATTERN.matcher(htmlString);
+                                while (m.find()) {
+                                    int type = (m.group(1).contentEquals("good") ? 1 : 0);
+                                    log.info("Searching for {}-bin genome IDs in sample {}.", m.group(1), sampleId);
+                                    String table = m.group(2);
+                                    // Parse the table HTML.
+                                    Document doc = Jsoup.parse(table);
+                                    // Loop through the table rows, keeping the genome IDs.
+                                    Elements rows = doc.select(new Evaluator.Tag("tr"));
+                                    for (Element row : rows) {
+                                        Elements cells = row.select(new Evaluator.Tag("td"));
+                                        // Only proceed if this table row has data cells (not headers).
+                                        if (cells.size() >= 3) {
+                                            // The second cell contains the genome ID as text inside a link.
+                                            // The first cell contains the score in the same way.  The
+                                            // third cell contains the genome name.  The fourth contains
+                                            // the reference genome ID.  The 11th contains the DNA size.
+                                            Element cell = cells.get(1);
+                                            Element link = cell.selectFirst(LINK_FINDER);
+                                            String genomeId = link.text();
+                                            binIds.get(type).add(genomeId);
+                                            cell = cells.get(0);
+                                            link = cell.selectFirst(LINK_FINDER);
+                                            double score = Double.valueOf(link.text());
+                                            String name = cells.get(2).text();
+                                            cell = cells.get(3);
+                                            link = cell.selectFirst(LINK_FINDER);
+                                            String refId;
+                                            if (link == null) {
+                                                log.warn("No reference genome found for {} in {}.", genomeId, sampleId);
+                                                refId = "";
+                                            } else
+                                                refId = link.text();
+                                            cell = cells.get(10);
+                                            int dnaSize = Integer.valueOf(cell.text());
+                                            reporter.binGenome(sampleId, type, genomeId, score, name, refId, dnaSize);
+                                        }
                                     }
                                 }
                             }
+                        } catch (PatricException e) {
+                            log.error("Could not copy binning report for sample {}: {}", sampleId, e.toString());
                         }
-                    } catch (PatricException e) {
-                        log.error("Could not copy binning report for sample {}: {}", sampleId, e.toString());
+                        // Write out the bin counts.  The good bins are in (1), the bad bins in (0).
+                        reporter.displaySample(sampleId, binIds.get(1), binIds.get(0));
                     }
-                    // Write out the bin counts.  The good bins are in (1), the bad bins in (0).
-                    reporter.displaySample(sampleId, binIds.get(1), binIds.get(0));
                 }
             }
             // Finish the report.
