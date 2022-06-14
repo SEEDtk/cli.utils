@@ -17,6 +17,7 @@ import org.theseed.utils.BaseProcessor;
  * updateMaster	update a master PATRIC database:  remove obsolete genomes and add the new ones
  * xTotals		output the total value of each column in an xmatrix
  * roleId		add role IDs to an input file
+ * roleTable	output sequences from genomes with functions
  */
 public class App
 {
@@ -48,6 +49,9 @@ public class App
             break;
         case "xTotals" :
             processor = new XTotalProcessor();
+            break;
+        case "roleTable" :
+            processor = new RoleTableProcessor();
             break;
         default:
             throw new RuntimeException("Invalid command " + command);
