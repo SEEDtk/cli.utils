@@ -39,11 +39,6 @@ public class DnaPegReporter extends PegReporter {
 
     @Override
     public void finishReport() {
-        // TODO code for finishReport
-
     }
-    // FIELDS
-    // TODO data members for DnaPegReporter
 
-    // TODO constructors and methods for DnaPegReporter
 }

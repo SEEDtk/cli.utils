@@ -37,8 +37,6 @@ public class ProteinPegReporter extends PegReporter {
 
     @Override
     public void finishReport() {
-        // TODO code for finishReport
-
     }
 
 }

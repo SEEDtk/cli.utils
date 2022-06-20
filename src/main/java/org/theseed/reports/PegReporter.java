@@ -17,8 +17,7 @@ import org.theseed.genome.Feature;
  */
 public abstract class PegReporter extends BaseReporter {
 
-    // FIELDS
-    // TODO data members for PegReporter
+
 
     /**
      * This interface describes the functions that must be supported by any command processor using
