@@ -14,7 +14,6 @@ import org.theseed.utils.BaseProcessor;
  * xMatrix		convert bin reports into a classification matrix
  * gtoRoles		get proteins from genomes based on roles
  * qzaReport	determine bin composition in trimmed Amplicon database
- * updateMaster	update a master PATRIC database:  remove obsolete genomes and add the new ones
  * xTotals		output the total value of each column in an xmatrix
  * roleId		add role IDs to an input file
  * roleTable	output sequences from genomes with functions
@@ -40,9 +39,6 @@ public class App
             break;
         case "gtoRoles" :
             processor = new GtoRolesProcessor();
-            break;
-        case "updateMaster" :
-            processor = new UpdateMasterProcessor();
             break;
         case "roleId" :
             processor = new RoleIdProcessor();
