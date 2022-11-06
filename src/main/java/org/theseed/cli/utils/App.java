@@ -17,6 +17,7 @@ import org.theseed.utils.BaseProcessor;
  * xTotals		output the total value of each column in an xmatrix
  * roleId		add role IDs to an input file
  * roleTable	output sequences from genomes with functions
+ * qzaDump		convert the samples in a QZA file to FASTA files
  */
 public class App
 {
@@ -48,6 +49,9 @@ public class App
             break;
         case "roleTable" :
             processor = new RoleTableProcessor();
+            break;
+        case "qzaDump" :
+            processor = new QzaDumpProcessor();
             break;
         default:
             throw new RuntimeException("Invalid command " + command);

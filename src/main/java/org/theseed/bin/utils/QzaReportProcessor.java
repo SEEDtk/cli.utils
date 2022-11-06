@@ -44,8 +44,8 @@ import org.theseed.utils.ParseFailureException;
  * --minSim		minimum similarity required for a good hit, as a fraction of the read length
  * --K			DNA kmer size
  * --minHits	minimum number of hits for a representative to be considered significant
- * --minQual	minimum acceptable quality for a read to be acceptable
- * --minLen		minimum acceptable length for a read to be acceptable
+ * --minQual	minimum quality for a read to be acceptable
+ * --minLen		minimum length for a read to be acceptable
  * --resume		name of a progress file used to make the program restartable; the default is
  * 				qzaReport.progress.txt
  *
@@ -92,6 +92,10 @@ public class QzaReportProcessor extends BaseProcessor {
     @Option(name = "--phred", metaVar = "50", usage = "zero-value offset for FASTQ quality strings")
     private int phredOffset;
 
+    /** minimum acceptable read quality */
+    @Option(name = "--minQual", metaVar = "20.0", usage = "minimum acceptable read quality")
+    private double minReadQual;
+
     /** minimum amount of kmer hits required as fraction of read length */
     @Option(name = "--minSim", metaVar = "0.90", usage = "minimum fraction of read length that must be kmer hits")
     private double minSimFraction;
@@ -103,10 +107,6 @@ public class QzaReportProcessor extends BaseProcessor {
     /** minimum acceptable read length */
     @Option(name = "--minLen", metaVar = "100", usage = "minimum acceptable read length")
     private int minReadLen;
-
-    /** minimum acceptable read quality */
-    @Option(name = "--minQual", metaVar = "20.0", usage = "minimum acceptable read quality")
-    private double minReadQual;
 
     /** kmer size */
     @Option(name = "--K", metaVar = "22", usage = "DNA kmer size")
@@ -136,11 +136,11 @@ public class QzaReportProcessor extends BaseProcessor {
     protected void setDefaults() {
         this.sourceType = FastqSampleGroup.Type.QZA;
         this.phredOffset = 33;
+        this.minReadQual = 30.0;
         this.minSimFraction = 0.80;
         this.kmerSize = DnaKmers.kmerSize();
         this.minHitCount = 180;
         this.minReadLen = 50;
-        this.minReadQual = 30.0;
         this.batchSize = 200;
         this.progressFile = new File(System.getProperty("user.dir"), "qzaReport.progress.txt");
     }
@@ -157,6 +157,8 @@ public class QzaReportProcessor extends BaseProcessor {
         // Verify the numbers.
         if (this.phredOffset < 32 || this.phredOffset > 127)
             throw new ParseFailureException("Invalid phred offset.  Must be between 32 and 127.");
+        if (this.minReadQual > 99.0 || this.minReadQual < 0.0)
+            throw new ParseFailureException("Invalid minimum read quality.  Cannot be greater than 99 or less than 0.");
         if (this.minSimFraction <= 0.0 || this.minSimFraction > 1.0)
             throw new ParseFailureException("Invalid minSim fraction.  Must be greater than 0 and less than or equal to 1.");
         if (this.kmerSize <= 1)
@@ -165,8 +167,6 @@ public class QzaReportProcessor extends BaseProcessor {
             throw new ParseFailureException("Invalid minimum hit count.  Must be greater than 0.");
         if (this.minReadLen < 1)
             throw new ParseFailureException("Invalid minimum read length.  Must be greater than 0.");
-        if (this.minReadQual > 99.0 || this.minReadQual < 0.0)
-            throw new ParseFailureException("Invalid minimum read quality.  Cannot be greater than 99 or less than 0.");
         if (this.batchSize < 1)
             throw new ParseFailureException("Invalid batch size.  Must be at least 1.");
         // Find out if we are resuming.
