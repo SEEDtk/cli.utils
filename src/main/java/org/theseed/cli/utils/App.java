@@ -3,6 +3,7 @@ package org.theseed.cli.utils;
 import java.util.Arrays;
 
 import org.theseed.bin.utils.BinReportProcessor;
+import org.theseed.bin.utils.BinTestProcessor;
 import org.theseed.bin.utils.QzaReportProcessor;
 import org.theseed.bin.utils.XMatrixProcessor;
 import org.theseed.utils.BaseProcessor;
@@ -18,6 +19,7 @@ import org.theseed.utils.BaseProcessor;
  * roleId		add role IDs to an input file
  * roleTable	output sequences from genomes with functions
  * qzaDump		convert the samples in a QZA file to FASTA files
+ * binTest		test the binning code on a directory of samples
  */
 public class App
 {
@@ -52,6 +54,9 @@ public class App
             break;
         case "qzaDump" :
             processor = new QzaDumpProcessor();
+            break;
+        case "binTest" :
+            processor = new BinTestProcessor();
             break;
         default:
             throw new RuntimeException("Invalid command " + command);
