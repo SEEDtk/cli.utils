@@ -9,6 +9,7 @@ import java.io.FileNotFoundException;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.UncheckedIOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -62,6 +63,9 @@ import com.github.cliftonlabs.json_simple.JsonObject;
  * --clear		erase all previous results before beginning
  * --path		path to the binning commands; the default is the value of the environment variable BIN_PATH
  *
+ * If a "bin.parms" file is present in the sample directory, it will be used in place of the "--binParms" value.
+ * This allows tuning of individual directories.
+ *
  * @author Bruce Parrello
  *
  */
@@ -77,7 +81,7 @@ public class BinTestProcessor extends BaseProcessor {
     /** filter for isolating sample directories */
     private static final FileFilter SAMPLE_DIR_FILTER = new SampleDirFilter();
     /** set of file names to preserve when clearing results */
-    private static final Set<String> KEEP_NAMES = Set.of("contigs.fasta", "site.tbl", "exclude.tbl");
+    private static final Set<String> KEEP_NAMES = Set.of("contigs.fasta", "site.tbl", "exclude.tbl", "bin.parms");
     /** file name filter to return output GTO files */
     private static final FilenameFilter BIN_RESULT_FILTER = new FilenameFilter() {
 
@@ -176,9 +180,7 @@ public class BinTestProcessor extends BaseProcessor {
             throw new FileNotFoundException("Binning parameter override file " + this.binParmFile + " is not found or unreadable.");
         else {
             // Read and fix up the parameters.
-            List<String> parmRecords = LineReader.readList(this.binParmFile);
-            this.binParms = parmRecords.stream().flatMap(x -> this.fixParm(x)).collect(Collectors.toList());
-            log.info("Override parameters are {}.", StringUtils.join(this.binParms, " "));
+            this.binParms = parseParmFile(this.binParmFile);
         }
         // Finally, check for file-clearing.
         if (this.clearFlag) {
@@ -199,13 +201,32 @@ public class BinTestProcessor extends BaseProcessor {
     }
 
     /**
+     * Parse a file of binning override parameters.
+     *
+     * @param parmFile		parameter file to parse
+     *
+     * @return a list of overrides in command-line parameter format
+     */
+    public static List<String> parseParmFile(File parmFile) {
+        List<String> retVal = null;
+        try {
+            List<String> parmRecords = LineReader.readList(parmFile);
+            retVal = parmRecords.stream().flatMap(x -> fixParm(x)).collect(Collectors.toList());
+            log.info("Override parameters are {}.", StringUtils.join(retVal, " "));
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        return retVal;
+    }
+
+    /**
      * Parse an override parameter.  If it uses an equal sign, split it into two parts.
      *
      * @param parm		parameter string to parse
      *
      * @return a stream containing the original parameter or the two parts of it
      */
-    private Stream<String> fixParm(String parm) {
+    private static Stream<String> fixParm(String parm) {
         Stream<String> retVal;
         String keyword = StringUtils.substringBefore(parm, "=");
         if (keyword.isEmpty()) {

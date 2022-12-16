@@ -96,6 +96,11 @@
         <version>1.0.0</version>
     </dependency>
     <dependency>
+        <groupId>org.theseed</groupId>
+        <artifactId>bins.generate</artifactId>
+        <version>1.0.0</version>
+    </dependency>
+    <dependency>
         <groupId>org.apache.poi</groupId>
         <artifactId>poi-ooxml</artifactId>
         <version>5.0.0</version>

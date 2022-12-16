@@ -10,17 +10,19 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.theseed.bins.Bin;
+import org.theseed.bins.BinGroup;
+import org.theseed.bins.generate.BinProcessor;
 import org.theseed.cli.AnnoService;
 import org.theseed.cli.DirEntry;
 import org.theseed.cli.DirTask;
@@ -28,27 +30,18 @@ import org.theseed.cli.StatusTask;
 import org.theseed.counters.Shuffler;
 import org.theseed.dl4j.eval.BinEvalProcessor;
 import org.theseed.genome.Genome;
-import org.theseed.io.LineReader;
 import org.theseed.reports.Html;
-import org.theseed.sequence.FastaInputStream;
-import org.theseed.sequence.FastaOutputStream;
-
-import com.github.cliftonlabs.json_simple.JsonArray;
 import com.github.cliftonlabs.json_simple.JsonException;
-import com.github.cliftonlabs.json_simple.JsonKey;
-import com.github.cliftonlabs.json_simple.JsonObject;
-import com.github.cliftonlabs.json_simple.Jsoner;
 
 /**
  * This object runs a single sample directory through the binning pipeline.
  *
- * Binning operates in six stages.
+ * Binning operates in four stages.
  *
- * 1.	Use "bins_coverage" to compute coverage.  This creates "output.contigs2reads.txt".
- * 2.	Use "bins_generate" to create the bins.  This creates many files, terminating with "bins.json".
- * 3.	For each bin, submit an annotation request to PATRIC.  This ultimately creates a series of "bin.X.XXXXXXX.gto" files.
- * 4.	Evaluate all the bins using the new evaluator.  This produces an "Eval" directory with an "index.html" file.
- * 5.	Run "vbins_generate" to find viruses.  This produces a "vbins.html" file.
+ * 1.	Use "bins.generate" to create the bins.  This creates many files, terminating with "bins.json".
+ * 2.	For each bin, submit an annotation request to PATRIC.  This ultimately creates a series of "bin.X.XXXXXXX.gto" files.
+ * 3.	Evaluate all the bins using the new evaluator.  This produces an "Eval" directory with an "index.html" file.
+ * 4.	Run "vbins_generate" to find viruses.  This produces a "vbins.html" file.
  *
  * The process is restartable, so if an output file is already present, the stage will be skipped.
  *
@@ -72,224 +65,76 @@ public class BinPipeline {
     private static File BIN_PATH = null;
     /** PERL executable file */
     private static File PERL_PATH = null;
-    /** empty list for contigs */
-    private static final Collection<JsonArray> NO_CONTIGS = Collections.emptyList();
-    /** empty list for refgenomes */
-    private static final Collection<String> NO_REFS = Collections.emptyList();
     /** evaluation model directory */
     private static File MODEL_DIR = new File(System.getProperty("user.dir"));
 
     /**
-     * This object represents an individual bin.
+     * This dinky little object contains the data we need to manage annotation of a bin.
      */
-    public static class Bin {
+    private class AnnoController {
 
-        /**
-         * This enum contains the JSON key encoding.
-         */
-        private enum BinKey implements JsonKey {
-            REF_GENOMES("refGenomes", NO_REFS),
-            TAXON_ID("taxonID", 2),
-            NAME("name", "unknown bin genome"),
-            CONTIGS("contigs", NO_CONTIGS),
-            GC("gc", 11),
-            DOMAIN("domain", "Bacteria");
-
-            private String keyName;
-            private Object defaultVal;
-
-            private BinKey(String keyName, Object defaultVal) {
-                this.keyName = keyName;
-                this.defaultVal = defaultVal;
-            }
-
-            @Override
-            public String getKey() {
-                return this.keyName;
-            }
-
-            @Override
-            public Object getValue() {
-                return this.defaultVal;
-            }
-
-        }
-
-        /** taxonomic ID of the bin */
-        private int taxID;
-        /** domain of the bin */
-        private String domain;
-        /** genetic code of the bin */
-        private int gc;
-        /** contigs in the bin */
-        private Collection<String> contigs;
-        /** name of the bin */
-        private String name;
-        /** mean coverage */
-        private double coverage;
-        /** list of reference genome IDs */
-        private List<String> refGenomes;
-        /** length of the bin */
-        private int len;
-        /** ID number of this bin */
-        private int binNum;
-        /** name of the FASTA file for the bin */
-        private File binFile;
-        /** name of the GTO file for the bin */
-        private File gtoFile;
-        /** annotation service for this bin */
+        /** annotation service object for this bin */
         private AnnoService annotation;
+        /** GTO file for this bin */
+        private File gtoFile;
+        /** original binning object */
+        private Bin bin;
 
         /**
-         * Build a bin descriptor out of its JSON object.
+         * Construct an annotation controller for a bin.
          *
-         * @param binData	JSON object describing the bin, from the bins.json
-         * @param num		bin number
-         * @throws IOException
+         * @param bin0	bin to annotate
          */
-        protected Bin(JsonObject binData, int num) throws IOException {
-            this.binNum = num;
-            this.taxID = binData.getIntegerOrDefault(BinKey.TAXON_ID);
-            this.domain = binData.getStringOrDefault(BinKey.DOMAIN);
-            this.gc = binData.getIntegerOrDefault(BinKey.GC);
-            this.refGenomes = binData.getCollectionOrDefault(BinKey.REF_GENOMES);
-            Collection<JsonArray> contigList = binData.getCollectionOrDefault(BinKey.CONTIGS);
-            this.name = binData.getStringOrDefault(BinKey.NAME);
-            double covgTotal = 0.0;
-            this.len = 0;
-            this.contigs = new ArrayList<String>(contigList.size());
-            for (JsonArray contig : contigList) {
-                this.contigs.add(contig.getString(0));
-                int contigLen = contig.getInteger(1);
-                covgTotal += contig.getDouble(2) * contigLen;
-                this.len += contigLen;
-            }
-            this.coverage = covgTotal / this.len;
-            if (this.refGenomes.size() < 1)
-                throw new IOException(String.format("Reference genomes missing from bin %d with taxon %d.", num, this.taxID));
-            // Denote there are no files yet and no annotation in progress.
-            this.binFile = null;
-            this.gtoFile = null;
-            this.annotation = null;
+        protected AnnoController(Bin bin0) {
+            this.annotation = new AnnoService(bin0.getOutFile(), bin0.getTaxonID(), bin0.getName(), bin0.getDomain(),
+                    bin0.getGc(), BinPipeline.this.sampleDir, BinPipeline.this.sampleSpace);
+            this.annotation.requestRefGenome(bin0.getRefGenome());
+            this.bin = bin0;
+            // Compute the GTO file name.
+            this.gtoFile = this.annotation.gtoFileName();
         }
 
         /**
-         * @return the taxonomic ID of the bin
-         */
-        public int getTaxID() {
-            return this.taxID;
-        }
-
-        /**
-         * @return the domain of the bin
-         */
-        public String getDomain() {
-            return this.domain;
-        }
-
-        /**
-         * @return the genetic code of the bin
-         */
-        public int getGc() {
-            return this.gc;
-        }
-
-        /**
-         * @return the list of contig IDs in the bin
-         */
-        public Collection<String> getContigs() {
-            return this.contigs;
-        }
-
-        /**
-         * @return the name of the bin
-         */
-        public String getName() {
-            return this.name;
-        }
-
-        /**
-         * @return the coverage of the bin
-         */
-        public double getCoverage() {
-            return this.coverage;
-        }
-
-        /**
-         * @return the list of reference genome IDs
-         */
-        public List<String> getRefGenomes() {
-            return this.refGenomes;
-        }
-
-        /**
-         * @return the primary reference genome ID
-         */
-        public String getRefGenome() {
-            return this.refGenomes.get(0);
-        }
-
-        /**
-         * @return the length of the bin in base pairs
-         */
-        public int getLen() {
-            return this.len;
-        }
-
-        /**
-         * @return the ID number of the bin
-         */
-        public int getBinNum() {
-            return this.binNum;
-        }
-
-        /**
-         * @return the name of the bin's FASTA file
-         */
-        protected File getBinFile() {
-            return this.binFile;
-        }
-
-        /**
-         * Specify the name of the bin's FASTA file.
+         * Start the annotation and return the task ID.
          *
-         * @param binFile 	the proposed bin file name
+         * @return the task ID for the annotation request
          */
-        protected void setBinFile(File binFile) {
-            this.binFile = binFile;
-            String gtoName = StringUtils.substringBeforeLast(this.binFile.getName(), ".") + ".gto";
-            this.gtoFile = new File(this.binFile.getParentFile(), gtoName);
+        protected String start() {
+            return this.annotation.start();
         }
 
         /**
-         * @return the name of the GTO file for this bin
+         * @return the name of the output GTO file
          */
         protected File getGtoFile() {
             return this.gtoFile;
         }
 
         /**
-         * @return TRUE if this bin already has a GTO
+         * @return TRUE if this bin has been annotated
          */
         protected boolean isAnnotated() {
-            return this.gtoFile != null && this.gtoFile.exists();
+            return this.gtoFile.exists();
         }
 
         /**
-         * @return the annotation service object for this bin
+         * @return the name of this bin
          */
-        protected AnnoService getAnnotation() {
-            return this.annotation;
+        public String getName() {
+            return this.bin.getName();
         }
 
         /**
-         * Save this bin's annotation service object.
+         * Get the result file from the annotation.
          *
-         * @param annotation 	the service object to save
+         * @return the result file from the annotation process
+         *
+         * @throws IOException
          */
-        protected void setAnnotation(AnnoService annotation) {
-            this.annotation = annotation;
+        public File getResultFile() throws IOException {
+            return this.annotation.getResultFile();
         }
+
 
     }
 
@@ -377,24 +222,20 @@ public class BinPipeline {
      */
     public void run() {
          try {
-             if (! this.checkFile("output.contigs2reads.txt")) {
-                 // Phase 1:  create the coverage file.
-                 this.computeCoverage();
-             }
              if (! this.checkFile("bins.json")) {
-                 // Phase 2: organize the contigs into bins.
+                 // Phase 1: organize the contigs into bins.
                  this.generateBins();
              }
              if (! this.checkFile("Eval/index.html")) {
-                 // Phase 3: create GTOs for the bins.  We only create the ones not already there.
+                 // Phase 2: create GTOs for the bins.  We only create the ones not already there.
                  boolean ok = this.annotateBins();
                  if (ok) {
-                     // Phase 4: evaluate the bins.
+                     // Phase 3: evaluate the bins.
                      this.evaluateBins();
                  }
              }
              if (this.checkVDir != null && ! this.checkFile("vbins.html")) {
-                 // Phase 5: bin the viruses.
+                 // Phase 4: bin the viruses.
                  this.binViruses();
              }
          } catch (IOException e) {
@@ -426,37 +267,32 @@ public class BinPipeline {
     }
 
     /**
-     * Create the coverage map from the contig file.
-     */
-    private void computeCoverage() {
-        log.info("Creating coverage file for {}.", this.sampleDir);
-        File contigFile = new File(this.sampleDir, "contigs.fasta");
-        boolean ok = runPerl("bins_coverage", contigFile.getAbsolutePath(), this.sampleDir.getAbsolutePath());
-        if (! ok)
-            throw new RuntimeException("Error in coverage phase for " + this.sampleDir + ".");
-    }
-
-    /**
      * Generate the bins.
      */
     private void generateBins() {
         log.info("Generating bins for {}.", this.sampleDir);
         // Build the parameter list using the overrides.
-        var genParms = new Shuffler<String>(this.binParms.size() + 2);
-        genParms.addAll(this.binParms);
-        File statsFile = new File(this.sampleDir, "bins.stats.txt");
-        genParms.add1("--statistics-file").add1(statsFile.getAbsolutePath());
+        List<String> overrides = this.binParms;
+        File overrideFile = new File(this.sampleDir, "bin.parms");
+        if (overrideFile.exists())
+            overrides = BinTestProcessor.parseParmFile(overrideFile);
+        var genParms = new Shuffler<String>(overrides.size() + 3);
+        genParms.addAll(overrides);
+        // Add the input FASTA file.
+        genParms.add1(new File(this.sampleDir, "contigs.fasta").getAbsolutePath());
         // Add the sample directory.
         genParms.add1(this.sampleDir.getAbsolutePath());
         String[] parmArgs = genParms.stream().toArray(String[]::new);
         // Call the generator.
-        boolean ok = runPerl("bins_generate", parmArgs);
+        BinProcessor processor = new BinProcessor();
+        boolean ok = processor.parseCommand(parmArgs);
         if (! ok)
-            throw new RuntimeException("Error in generate phase for " + this.sampleDir);
+            throw new RuntimeException("Command-line parse error in bins.generate.");
+        processor.run();
     }
 
     /**
-     * Create the FASTA and GTO files for the bins.
+     * Create the GTO files for the bins.
      *
      * @return TRUE if the GTOs are ready for evaluation, else FALSE
      *
@@ -468,8 +304,9 @@ public class BinPipeline {
         // Get the bins.json file.
         File binFile = new File(this.sampleDir, "bins.json");
         log.info("Reading bin data from {}.", binFile.getAbsolutePath());
-        List<Bin> bins = this.readBins(binFile);
+        BinGroup binGroup = new BinGroup(binFile);
         // Skip all the work if there are no bins.
+        Collection<Bin> bins = binGroup.getSignificantBins();
         if (bins.isEmpty()) {
             log.info("No bins found in sample {}.", this.sampleDir);
             // We create a special index.html here to stop further calls to the annotate/eval process.
@@ -483,69 +320,20 @@ public class BinPipeline {
             // Return FALSE to skip the evaluation step.
             retVal = false;
         } else {
-            // Now we create the FASTA files from these bins.  First, we build an array of FASTA output streams
-            // and map each contig to its stream.
-            log.info("Creating bin FASTA files.");
-            List<FastaOutputStream> binStreams = new ArrayList<FastaOutputStream>(bins.size());
-            try {
-                // This will be the contig mapping.
-                Map<String, FastaOutputStream> binMap = new HashMap<String, FastaOutputStream>(4000);
-                // Now we loop through the bins.
-                for (var bin : bins) {
-                    // Compute the FASTA file name.
-                    File fileName = new File(this.sampleDir, String.format("bin.%d.%d.fa", bin.getBinNum(), bin.getTaxID()));
-                    bin.setBinFile(fileName);
-                    // Only proceed if there is no GTO file for this bin.  If there is a GTO file, the FASTA file already exists
-                    // and we've used it to annotate.
-                    if (! bin.isAnnotated()) {
-                        final FastaOutputStream binStream = new FastaOutputStream(fileName);
-                        binStreams.add(binStream);
-                        bin.getContigs().stream().forEach(x -> binMap.put(x, binStream));
-                    }
-                }
-                // Are there any bin files to rebuild?
-                if (binMap.size() <= 0)
-                    log.info("All bins are already annotated for {}.", this.sampleDir);
-                else {
-                    // Now we can read the contig file and place the binned contigs.
-                    try (FastaInputStream inStream = new FastaInputStream(new File(this.sampleDir, "contigs.fasta"))) {
-                        int binnedCount = 0;
-                        int skipCount = 0;
-                        for (var contig : inStream) {
-                            var outStream = binMap.get(contig.getLabel());
-                            if (outStream == null)
-                                skipCount++;
-                            else {
-                                outStream.write(contig);
-                                binnedCount++;
-                            }
-                        }
-                        log.info("{} new contigs binned and {} skipped for {}.", binnedCount, skipCount, this.sampleDir);
-                    }
-                }
-            } finally {
-                for (var stream : binStreams)
-                    stream.close();
-            }
-            // Make sure we have a temporary working directory for the P3 temp files.
+            // We are about to do the annotations. Make sure we have a temporary working directory for the P3 temp files.
             File tempDir = new File(this.sampleDir, "Temp");
             if (! tempDir.isDirectory())
                 FileUtils.forceMkdir(tempDir);
-            // Now we annotate the bins that haven't been annotated yet.  We need a map from task IDs to bin objects.
-            Map<String, Bin> taskMap = new HashMap<String, Bin>(bins.size() * 4 / 3 + 1);
+            // Now we annotate the bins that haven't been annotated yet.  We need a map from task IDs to bin object
+            // annotation controllers.
+            Map<String, AnnoController> taskMap = new HashMap<String, AnnoController>(bins.size() * 4 / 3 + 1);
             // Create the annotation tasks.
+            List<AnnoController> annotations = bins.stream().map(x -> new AnnoController(x))
+                    .filter(x -> ! x.isAnnotated()).collect(Collectors.toList());
             log.info("Submitting annotation requests for {}.", this.sampleDir);
-            for (var bin : bins) {
-                if (! bin.isAnnotated()) {
-                    AnnoService annotation = new AnnoService(bin.getBinFile(), bin.getTaxID(), bin.getName(), bin.getDomain(),
-                            bin.getGc(), this.sampleDir, this.sampleSpace);
-                    // Attach the reference genome.
-                    annotation.requestRefGenome(bin.getRefGenome());
-                    // Start up the annotation and connect the bin to the task ID.
-                    bin.setAnnotation(annotation);
-                    String taskID = annotation.start();
-                    taskMap.put(taskID, bin);
-                }
+            for (var annotation : annotations) {
+                String taskID = annotation.start();
+                taskMap.put(taskID, annotation);
             }
             // We use this to check our progress.
             StatusTask status = new StatusTask(1000, tempDir, this.sampleSpace);
@@ -561,57 +349,26 @@ public class BinPipeline {
                 while (iter.hasNext()) {
                     var statusEntry = iter.next();
                     String taskId = statusEntry.getKey();
-                    Bin statusBin = taskMap.get(taskId);
+                    AnnoController statusAnno = taskMap.get(taskId);
                     log.debug("Task {} has status {}, producing file {}.", taskId, statusEntry.getValue(),
-                            statusBin.getGtoFile());
+                            statusAnno.getGtoFile());
                     switch (statusEntry.getValue()) {
                     case StatusTask.FAILED :
                         // Here the annotation failed.  Log an error for later and remove the task.
-                        log.error("Failed to annotate bin {} for sample {}.  Retry later.", statusBin.getName(), this.sampleDir);
+                        log.error("Failed to annotate bin \"{}\" for sample {}.  Retry later.", statusAnno.getName(), this.sampleDir);
                         retVal = false;
                         taskMap.remove(taskId);
                         break;
                     case StatusTask.COMPLETED :
                         // Here the annotation is done! log success and remove the task.
-                        File gtoFile = statusBin.getAnnotation().getResultFile();
+                        File gtoFile = statusAnno.getResultFile();
                         Genome genome = new Genome(gtoFile);
-                        log.info("Genome {} created in file {} (check = {}).", genome, gtoFile, statusBin.gtoFile);
+                        log.info("Genome {} created in file {} (check = {}).", genome, gtoFile, statusAnno.isAnnotated());
                         taskMap.remove(taskId);
                         break;
                     }
                 }
             }
-        }
-        return retVal;
-    }
-
-    /**
-     * Read all the bins from the specified bin file.
-     *
-     * @param binFile	bins.json file containing the bin definitions
-     *
-     * @return a list of the bin objects
-     *
-     * @throws IOException
-     * @throws JsonException
-     */
-    private List<Bin> readBins(File binFile) throws IOException, JsonException {
-        var retVal = new ArrayList<Bin>();
-        try (LineReader binStream = new LineReader(binFile)) {
-            StringBuffer binString = new StringBuffer(1000);
-            int binCount = 1;
-            for (var line : binStream) {
-                if (line.contentEquals("//")) {
-                    // Here we are at the end of a bin.  Deserialize it and clear the buffer for the next bin.
-                    JsonObject binJson = (JsonObject) Jsoner.deserialize(binString.toString());
-                    Bin bin = new Bin(binJson, binCount);
-                    retVal.add(bin);
-                    binCount++;
-                    binString.setLength(0);
-                } else
-                    binString.append(line);
-            }
-            log.info("{} bins read for sample {}.", retVal.size(), this.sampleDir);
         }
         return retVal;
     }
