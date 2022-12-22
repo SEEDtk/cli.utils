@@ -24,8 +24,8 @@ import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.cli.DirTask;
-import org.theseed.dl4j.eval.stats.QualityKeys;
 import org.theseed.genome.Genome;
+import org.theseed.genome.QualityKeys;
 import org.theseed.io.LineReader;
 import org.theseed.utils.BaseProcessor;
 import org.theseed.utils.ParseFailureException;
@@ -62,6 +62,7 @@ import com.github.cliftonlabs.json_simple.JsonObject;
  * --virusDB	if specified, must be the name of the CheckV database directory, and virus binning will be turned on
  * --clear		erase all previous results before beginning
  * --path		path to the binning commands; the default is the value of the environment variable BIN_PATH
+ * --dnaLim		maximum size of a bin that can be annotated, in millions of base pairs (default 200)
  *
  * If a "bin.parms" file is present in the sample directory, it will be used in place of the "--binParms" value.
  * This allows tuning of individual directories.
@@ -78,6 +79,8 @@ public class BinTestProcessor extends BaseProcessor {
     private File[] samples;
     /** optional binning parameter overrides */
     private List<String> binParms;
+    /** maximum bin size for annotation */
+    private int maxBinSize;
     /** filter for isolating sample directories */
     private static final FileFilter SAMPLE_DIR_FILTER = new SampleDirFilter();
     /** set of file names to preserve when clearing results */
@@ -109,6 +112,10 @@ public class BinTestProcessor extends BaseProcessor {
     /** path to binning commands */
     @Option(name = "--path", metaVar = "~/SEEDtk/bin", usage = "path to binning commands")
     private File binPath;
+
+    /** maximum size of a bin that can be annotated */
+    @Option(name = "--dnaLim", metaVar = "150", usage = "maximum size of a bin that can be annotated, in millions of base pairs")
+    private int dnaLimM;
 
     /** name of evaluation model directory */
     @Argument(index = 0, metaVar = "modelDir", usage = "evaluation model directory", required = true)
@@ -148,6 +155,7 @@ public class BinTestProcessor extends BaseProcessor {
         if (StringUtils.isBlank(binPathEnv))
             binPathEnv = System.getProperty("user.dir");
         this.binPath = new File(binPathEnv);
+        this.dnaLimM = 200;
     }
 
     @Override
@@ -168,6 +176,10 @@ public class BinTestProcessor extends BaseProcessor {
         if (this.samples.length == 0)
             throw new IOException("No samples found in " + this.samplesDir + ".");
         log.info("{} sample directories found in {}.", this.samples.length, this.samplesDir);
+        // Insure the bin-size limit is valid.
+        if (this.dnaLimM < 5)
+            throw new ParseFailureException("DNA size limit must be at least 5 (indicating 5,000,000 base pairs).");
+        this.maxBinSize = this.dnaLimM * 1000000;
         // Verify the workspace directory.
         DirTask dirTask = new DirTask(this.samplesDir, this.workspace);
         if (! dirTask.check(this.workspace))
@@ -241,6 +253,7 @@ public class BinTestProcessor extends BaseProcessor {
 
     @Override
     protected void runCommand() throws Exception {
+        BinPipeline.setMaxFastaSize(this.maxBinSize);
         // Create the pipelines.
         List<BinPipeline> pipelines = Arrays.stream(this.samples).sorted()
                 .map(x -> new BinPipeline(x, this.binParms, this.workspace, this.virusDbDir))

@@ -61,6 +61,8 @@ public class BinPipeline {
     private File checkVDir;
     /** PATRIC workspace for this sample */
     private String sampleSpace;
+    /** maximum safe bin size */
+    private static int maxBinSize = 200000000;
     /** path to binning commands */
     private static File BIN_PATH = null;
     /** PERL executable file */
@@ -86,12 +88,19 @@ public class BinPipeline {
          * @param bin0	bin to annotate
          */
         protected AnnoController(Bin bin0) {
-            this.annotation = new AnnoService(bin0.getOutFile(), bin0.getTaxonID(), bin0.getName(), bin0.getDomain(),
-                    bin0.getGc(), BinPipeline.this.sampleDir, BinPipeline.this.sampleSpace);
-            this.annotation.requestRefGenome(bin0.getRefGenome());
+            File binFastaFile = bin0.getOutFile();
+            if (binFastaFile.length() < BinPipeline.maxBinSize) {
+                this.annotation = new AnnoService(bin0.getOutFile(), bin0.getTaxonID(), bin0.getName(), bin0.getDomain(),
+                        bin0.getGc(), BinPipeline.this.sampleDir, BinPipeline.this.sampleSpace);
+                this.annotation.requestRefGenome(bin0.getRefGenome());
+                // Compute the GTO file name.
+                this.gtoFile = this.annotation.gtoFileName();
+            } else {
+                log.info("Skipping annotation for bin {}:  file size too large.", bin0.getName());
+                this.annotation = null;
+                this.gtoFile = null;
+            }
             this.bin = bin0;
-            // Compute the GTO file name.
-            this.gtoFile = this.annotation.gtoFileName();
         }
 
         /**
@@ -118,6 +127,13 @@ public class BinPipeline {
         }
 
         /**
+         * @return TRUE if this bin needs annotation
+         */
+        protected boolean needsAnnotation() {
+            return this.annotation != null && this.isAnnotated();
+        }
+
+        /**
          * @return the name of this bin
          */
         public String getName() {
@@ -136,6 +152,15 @@ public class BinPipeline {
         }
 
 
+    }
+
+    /**
+     * Specify the maximum binnable FASTA file size.
+     *
+     * @param maxSize	maximum file size
+     */
+    public static void setMaxFastaSize(int maxSize) {
+        maxBinSize = maxSize;
     }
 
     /**
@@ -305,21 +330,11 @@ public class BinPipeline {
         File binFile = new File(this.sampleDir, "bins.json");
         log.info("Reading bin data from {}.", binFile.getAbsolutePath());
         BinGroup binGroup = new BinGroup(binFile);
+        // Track the number of annotations made.
+        int annoCount = 0;
         // Skip all the work if there are no bins.
         Collection<Bin> bins = binGroup.getSignificantBins();
-        if (bins.isEmpty()) {
-            log.info("No bins found in sample {}.", this.sampleDir);
-            // We create a special index.html here to stop further calls to the annotate/eval process.
-            File evalDir = this.cleanEvalDir();
-            String page = Html.page("Evaluation Summary Report",
-                    h1("Evaluation Summary Report"),
-                    p("No bins found in " + this.sampleDir.getName() + ".")
-                );
-            File summaryFile = new File(evalDir, "index.html");
-            FileUtils.writeStringToFile(summaryFile, page, "UTF-8");
-            // Return FALSE to skip the evaluation step.
-            retVal = false;
-        } else {
+        if (! bins.isEmpty()) {
             // We are about to do the annotations. Make sure we have a temporary working directory for the P3 temp files.
             File tempDir = new File(this.sampleDir, "Temp");
             if (! tempDir.isDirectory())
@@ -329,7 +344,7 @@ public class BinPipeline {
             Map<String, AnnoController> taskMap = new HashMap<String, AnnoController>(bins.size() * 4 / 3 + 1);
             // Create the annotation tasks.
             List<AnnoController> annotations = bins.stream().map(x -> new AnnoController(x))
-                    .filter(x -> ! x.isAnnotated()).collect(Collectors.toList());
+                    .filter(x -> x.needsAnnotation()).collect(Collectors.toList());
             log.info("Submitting annotation requests for {}.", this.sampleDir);
             for (var annotation : annotations) {
                 String taskID = annotation.start();
@@ -365,10 +380,25 @@ public class BinPipeline {
                         Genome genome = new Genome(gtoFile);
                         log.info("Genome {} created in file {} (check = {}).", genome, gtoFile, statusAnno.isAnnotated());
                         taskMap.remove(taskId);
+                        annoCount++;
                         break;
                     }
                 }
             }
+        }
+        // Check to see if there were no possible annotations.
+        if (retVal && annoCount == 0) {
+            log.info("No bins found in sample {}.", this.sampleDir);
+            // We create a special index.html here to stop further calls to the annotate/eval process.
+            File evalDir = this.cleanEvalDir();
+            String page = Html.page("Evaluation Summary Report",
+                    h1("Evaluation Summary Report"),
+                    p("No annotatable bins found in " + this.sampleDir.getName() + ".")
+                );
+            File summaryFile = new File(evalDir, "index.html");
+            FileUtils.writeStringToFile(summaryFile, page, "UTF-8");
+            // Return FALSE to skip the evaluation step.
+            retVal = false;
         }
         return retVal;
     }
