@@ -130,7 +130,7 @@ public class BinPipeline {
          * @return TRUE if this bin needs annotation
          */
         protected boolean needsAnnotation() {
-            return this.annotation != null && this.isAnnotated();
+            return this.annotation != null && ! this.isAnnotated();
         }
 
         /**
