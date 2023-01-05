@@ -39,7 +39,7 @@ import org.theseed.utils.ParseFailureException;
  * -v	display more frequent log messages
  * -b	batch size for parallel processing
  *
- * --source		type of input directory-- QZA or P3DIR
+ * --source		type of input directory-- QZA, FASTQ, or FASTA
  * --phred		phred offset for quality strings in the FASTQ files (default 33)
  * --minSim		minimum similarity required for a good hit, as a fraction of the read length
  * --K			DNA kmer size
