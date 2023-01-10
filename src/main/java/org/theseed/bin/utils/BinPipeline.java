@@ -61,6 +61,8 @@ public class BinPipeline {
     private File checkVDir;
     /** PATRIC workspace for this sample */
     private String sampleSpace;
+    /** TRUE if we want to annotate and evaluate genomes */
+    private boolean annotateFlag;
     /** maximum safe bin size */
     private static int maxBinSize = 200000000;
     /** path to binning commands */
@@ -174,6 +176,7 @@ public class BinPipeline {
     public BinPipeline(File sampDir, List<String> overrides, String workspace, File checkVdb) {
         this.sampleDir = sampDir;
         this.binParms = overrides;
+        this.annotateFlag = true;
         // Process the virus bin directory.
         this.checkVDir = checkVdb;
         if (BIN_PATH == null)
@@ -198,7 +201,18 @@ public class BinPipeline {
     /**
      * This is a special hook for testing.
      */
-    protected BinPipeline() { }
+    protected BinPipeline() {
+        this.annotateFlag = true;
+    }
+
+    /**
+     * Suppress annotation.
+     *
+     * @param binOnly	 TRUE to suppress annotation, FALSE to allow it
+     */
+    public void suppressAnnotation(boolean binOnly) {
+        this.annotateFlag = ! binOnly;
+    }
 
     /**
      * Specify the binning command execution path.  An exception is throw if the binning path
@@ -251,7 +265,8 @@ public class BinPipeline {
                  // Phase 1: organize the contigs into bins.
                  this.generateBins();
              }
-             if (! this.checkFile("Eval/index.html")) {
+             // Note we check here for the possibility annotation is being suppressed.
+             if (this.annotateFlag && ! this.checkFile("Eval/index.html")) {
                  // Phase 2: create GTOs for the bins.  We only create the ones not already there.
                  boolean ok = this.annotateBins();
                  if (ok) {

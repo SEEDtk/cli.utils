@@ -63,6 +63,7 @@ import com.github.cliftonlabs.json_simple.JsonObject;
  * --clear		erase all previous results before beginning
  * --path		path to the binning commands; the default is the value of the environment variable BIN_PATH
  * --dnaLim		maximum size of a bin that can be annotated, in millions of base pairs (default 200)
+ * --binOnly	if specified, binning will be performed, but no annotation or evaluation will be done
  *
  * If a "bin.parms" file is present in the sample directory, it will be used in place of the "--binParms" value.
  * This allows tuning of individual directories.
@@ -101,13 +102,17 @@ public class BinTestProcessor extends BaseProcessor {
     @Option(name = "--binParms", metaVar = "parms.txt", usage = "if specified, file of binning override parameters")
     private File binParmFile;
 
-    /** TRUE to suppress virus binning */
+    /** virus database for virus binning; if unspecified, virus binning is skipped */
     @Option(name = "--virusDB", usage = "if specified, virus binning database for CheckV")
     private File virusDbDir;
 
     /** TRUE to clear prior results */
     @Option(name = "--clear", usage = "if specified, prior results will be deleted from the sample directories")
     private boolean clearFlag;
+
+    /** TRUE to suppress annotation */
+    @Option(name = "--binOnly", usage = "if specified, only binning will be performed, and annotation and evaluation will be skipped")
+    private boolean binOnlyFlag;
 
     /** path to binning commands */
     @Option(name = "--path", metaVar = "~/SEEDtk/bin", usage = "path to binning commands")
@@ -156,6 +161,7 @@ public class BinTestProcessor extends BaseProcessor {
             binPathEnv = System.getProperty("user.dir");
         this.binPath = new File(binPathEnv);
         this.dnaLimM = 200;
+        this.binOnlyFlag = false;
     }
 
     @Override
@@ -258,42 +264,46 @@ public class BinTestProcessor extends BaseProcessor {
         List<BinPipeline> pipelines = Arrays.stream(this.samples).sorted()
                 .map(x -> new BinPipeline(x, this.binParms, this.workspace, this.virusDbDir))
                 .collect(Collectors.toList());
+        // Set the annotation flags.
+        if (this.binOnlyFlag)
+            pipelines.stream().forEach(x -> x.suppressAnnotation(true));
         // Create a stream and call the bin process for each sample directory.
         pipelines.stream().forEach(x -> x.run());
-        // Now produce a summary of the bins in the main directory.
-        int badTotal = 0;
-        int mostlyTotal = 0;
-        int goodTotal = 0;
-        try (PrintWriter writer = new PrintWriter(new File(this.samplesDir, "quality.tbl"))) {
-            writer.println("Sample\tgood_bins\tmostly_good_bins\tbad_bins\ttotal");
-            for (File sampleDir : this.samples) {
-                File[] binGtos = sampleDir.listFiles(BIN_RESULT_FILTER);
-                log.info("{} bin results found in {}.", binGtos.length, sampleDir);
-                int goodCount = 0;
-                int badCount = 0;
-                int mostlyCount = 0;
-                for (File gtoFile : binGtos) {
-                    Genome gto = new Genome(gtoFile);
-                    JsonObject quality = gto.getQuality();
-                    // Compute the status.
-                    if (! quality.getBooleanOrDefault(QualityKeys.MOSTLY_GOOD))
-                        badCount++;
-                    else if (quality.getBooleanOrDefault(QualityKeys.HAS_SSU_RNA))
-                        goodCount++;
-                    else
-                        mostlyCount++;
+        // If we are annotating, produce a summary of the bins in the main directory.
+        if (! this.binOnlyFlag) {
+            int badTotal = 0;
+            int mostlyTotal = 0;
+            int goodTotal = 0;
+            try (PrintWriter writer = new PrintWriter(new File(this.samplesDir, "quality.tbl"))) {
+                writer.println("Sample\tgood_bins\tmostly_good_bins\tbad_bins\ttotal");
+                for (File sampleDir : this.samples) {
+                    File[] binGtos = sampleDir.listFiles(BIN_RESULT_FILTER);
+                    log.info("{} bin results found in {}.", binGtos.length, sampleDir);
+                    int goodCount = 0;
+                    int badCount = 0;
+                    int mostlyCount = 0;
+                    for (File gtoFile : binGtos) {
+                        Genome gto = new Genome(gtoFile);
+                        JsonObject quality = gto.getQuality();
+                        // Compute the status.
+                        if (! quality.getBooleanOrDefault(QualityKeys.MOSTLY_GOOD))
+                            badCount++;
+                        else if (quality.getBooleanOrDefault(QualityKeys.HAS_SSU_RNA))
+                            goodCount++;
+                        else
+                            mostlyCount++;
+                    }
+                    int total = goodCount + badCount + mostlyCount;
+                    writer.format("%s\t%d\t%d\t%d\t%d%n", sampleDir.getName(), goodCount, mostlyCount, badCount, total);
+                    goodTotal += goodCount;
+                    mostlyTotal += mostlyCount;
+                    badTotal += badCount;
                 }
-                int total = goodCount + badCount + mostlyCount;
-                writer.format("%s\t%d\t%d\t%d\t%d%n", sampleDir.getName(), goodCount, mostlyCount, badCount, total);
-                goodTotal += goodCount;
-                mostlyTotal += mostlyCount;
-                badTotal += badCount;
+                writer.println();
+                int totalTotal = goodTotal + badTotal + mostlyTotal;
+                writer.format("%s\t%d\t%d\t%d\t%d%n", "TOTAL", goodTotal, mostlyTotal, badTotal, totalTotal);
             }
-            writer.println();
-            int totalTotal = goodTotal + badTotal + mostlyTotal;
-            writer.format("%s\t%d\t%d\t%d\t%d%n", "TOTAL", goodTotal, mostlyTotal, badTotal, totalTotal);
         }
-
     }
 
 }
