@@ -64,6 +64,7 @@ import com.github.cliftonlabs.json_simple.JsonObject;
  * --path		path to the binning commands; the default is the value of the environment variable BIN_PATH
  * --dnaLim		maximum size of a bin that can be annotated, in millions of base pairs (default 200)
  * --binOnly	if specified, binning will be performed, but no annotation or evaluation will be done
+ * --para		bin the samples in parallel
  *
  * If a "bin.parms" file is present in the sample directory, it will be used in place of the "--binParms" value.
  * This allows tuning of individual directories.
@@ -122,6 +123,10 @@ public class BinTestProcessor extends BaseProcessor {
     @Option(name = "--dnaLim", metaVar = "150", usage = "maximum size of a bin that can be annotated, in millions of base pairs")
     private int dnaLimM;
 
+    /** TRUE to use parallel processing */
+    @Option(name = "--para", usage = "if specified, the samples will be processed in parallel")
+    private boolean paraFlag;
+
     /** name of evaluation model directory */
     @Argument(index = 0, metaVar = "modelDir", usage = "evaluation model directory", required = true)
     private File modelDir;
@@ -162,6 +167,7 @@ public class BinTestProcessor extends BaseProcessor {
         this.binPath = new File(binPathEnv);
         this.dnaLimM = 200;
         this.binOnlyFlag = false;
+        this.paraFlag = false;
     }
 
     @Override
@@ -268,7 +274,12 @@ public class BinTestProcessor extends BaseProcessor {
         if (this.binOnlyFlag)
             pipelines.stream().forEach(x -> x.suppressAnnotation(true));
         // Create a stream and call the bin process for each sample directory.
-        pipelines.stream().forEach(x -> x.run());
+        Stream<BinPipeline> binStream;
+        if (this.paraFlag)
+            binStream = pipelines.parallelStream();
+        else
+            binStream = pipelines.stream();
+        binStream.forEach(x -> x.run());
         // If we are annotating, produce a summary of the bins in the main directory.
         if (! this.binOnlyFlag) {
             int badTotal = 0;
