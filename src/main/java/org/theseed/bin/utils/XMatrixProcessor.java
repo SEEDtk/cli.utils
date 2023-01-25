@@ -27,14 +27,14 @@ import org.theseed.utils.ParseFailureException;
 /**
  * This command creates a classification matrix for a set of bin reports.  The reports should be in the
  * GENOMES format from the BinReportProcessor command (or the standard format from the QzaReportProcessor
- * command).  The positional parameters are the name of the output directory and then a list of input
- * specifiers arranged in pairs.  The first item in each pair is a label value and the second is the
- * file name for a bin report.  So, for example
+ * command).  The positional parameters are the name of the output directory, a stats file for the
+ * input feature IDs, and then a list of input specifiers arranged in pairs.  The first item in each pair is an
+ * output label value and the second is the file name for a bin report.  So, for example
  *
- * 		cli.utils xmatrix outDir parkinsons parkReport.tbl alzheimers alzReport.tbl control controlReport.tbl
+ * 		cli.utils xmatrix outDir rep100.stats.tbl parkinsons parkReport.tbl control controlReport.tbl
  *
- * would assign the samples in "parkReport.tbl" the label "parkinsons", the samples in "alzReport.tbl" the
- * label "alzheimers", and the samples is "controlReport.tbl" the label "control".
+ * would assign the samples in "parkReport.tbl" the label "parkinsons" and the samples in "controlReport.tbl"
+ * the label "control".
  *
  * The command-line options are as follows.
  *
@@ -44,7 +44,7 @@ import org.theseed.utils.ParseFailureException;
  * --clear		erase the output directory before processing
  * --label		name to give to the label column (default "type")
  * --format		format of the output directory (default DL4J)
- *
+*
  * @author Bruce Parrello
  *
  */
@@ -63,6 +63,7 @@ public class XMatrixProcessor extends BaseProcessor {
     private Set<String> genomeIdSet;
     /** expected number of input samples */
     public static final int EXPECTED_SAMPLES = 500;
+    // TODO we must convert scores to feature values using an object
 
     // COMMAND-LINE OPTIONS
 
@@ -82,9 +83,15 @@ public class XMatrixProcessor extends BaseProcessor {
     @Argument(index = 0, metaVar = "outDir", usage = "output directory", required = true)
     private File outDir;
 
+    /** input feature ID file */
+    @Argument(index = 1, metaVar = "feature.ids.tbl", usage = "file containing possible feature IDs in the first column",
+            required = true)
+    private File featFile;
+
     /** specifications-- label followed by file, repeated */
-    @Argument(index = 1, metaVar = "label1 inFile1 label2 inFile2 ...", usage = "list of label/input-file pairs")
+    @Argument(index = 2, metaVar = "label1 inFile1 label2 inFile2 ...", usage = "list of label/input-file pairs")
     private List<String> specifications;
+
 
     @Override
     protected void setDefaults() {
@@ -116,6 +123,7 @@ public class XMatrixProcessor extends BaseProcessor {
                 throw new FileNotFoundException("Input file " + inFile + " is not found or unreadable.");
             this.inputFileMap.put(label, inFile);
         }
+        // TODO load the feature group IDs
         return true;
     }
 
@@ -141,6 +149,7 @@ public class XMatrixProcessor extends BaseProcessor {
                 labelSet.add(label);
             // Now we need to process all the bins in the file.  For each bin, we need the sample ID and
             // the repgen ID.
+            // TODO also need scores; we sum the scores
             try (TabbedLineReader inStream = new TabbedLineReader(inFile)) {
                 int sampleCol = inStream.findField("sample_id");
                 int repgenCol = inStream.findField("repgen_id");
@@ -161,15 +170,15 @@ public class XMatrixProcessor extends BaseProcessor {
             log.info("{} total samples processed.  {} total repgen IDs found so far in {} total bins.",
                     this.sampleTypeMap.size(), this.genomeIdSet.size(), binCount);
         }
-        // Create an array of the genome IDs.
+        // Create an array of the feature IDs.
         String[] repgenIds = this.genomeIdSet.stream().toArray(String[]::new);
         // Now all our hashes have been built.  Send the labels to the directory creator.
         log.info("Writing to output directory {}.", this.outDir);
         dirCreator.setLabels(labelSet);
         // Next, send the column headings.
         dirCreator.setColumns("sample", repgenIds, this.labelCol);
-        // Now we pass in the rows, one at a time.  For each row, there is a sample ID, an array of 1/0 values, and
-        // then the sample type.  To start, we allocate the array of doubles for the input (1/0) columns.
+        // Now we pass in the rows, one at a time.  For each row, there is a sample ID, an array of scores, and
+        // then the sample type.  To start, we allocate the array of doubles for the input (score) columns.
         double[] inputValues = new double[this.genomeIdSet.size()];
         for (Map.Entry<String, Set<String>> sampleData : this.sampleGenomeMap.entrySet()) {
             String sample = sampleData.getKey();
