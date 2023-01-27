@@ -5,13 +5,13 @@ import java.util.Arrays;
 import org.theseed.bin.utils.BinReportProcessor;
 import org.theseed.bin.utils.BinTestProcessor;
 import org.theseed.bin.utils.QzaReportProcessor;
-import org.theseed.bin.utils.XMatrixProcessor;
+import org.theseed.binreports.BinReportAnalysisProcessor;
 import org.theseed.utils.BaseProcessor;
 
 /**
  * Commands for utilities relating to CLI processing.
  *
- * binReport	determine bin composition in a PATRIC workspace directory
+ * binStats	determine bin composition in a PATRIC workspace directory
  * xMatrix		convert bin reports into a classification matrix
  * gtoRoles		get proteins from genomes based on roles
  * qzaReport	determine bin composition in trimmed Amplicon database
@@ -20,6 +20,7 @@ import org.theseed.utils.BaseProcessor;
  * roleTable	output sequences from genomes with functions
  * qzaDump		convert the samples in a QZA file to FASTA files
  * binTest		test the binning code on a directory of samples
+ * binReport		compare bin reports for different sample states
  */
 public class App
 {
@@ -31,14 +32,11 @@ public class App
         BaseProcessor processor;
         // Determine the command to process.
         switch (command) {
-        case "binReport" :
+        case "binStats" :
             processor = new BinReportProcessor();
             break;
         case "qzaReport" :
             processor = new QzaReportProcessor();
-            break;
-        case "xmatrix" :
-            processor = new XMatrixProcessor();
             break;
         case "gtoRoles" :
             processor = new GtoRolesProcessor();
@@ -57,6 +55,9 @@ public class App
             break;
         case "binTest" :
             processor = new BinTestProcessor();
+            break;
+        case "binReport" :
+            processor = new BinReportAnalysisProcessor();
             break;
         default:
             throw new RuntimeException("Invalid command " + command);

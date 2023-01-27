@@ -8,14 +8,15 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.SortedSet;
-import java.util.TreeSet;
+import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 import org.kohsuke.args4j.Argument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.theseed.binreports.BinReport;
 import org.theseed.io.TabbedLineReader;
-import org.theseed.reports.BinReport;
 
 /**
  * This is the base processor for commands that process sets of bin reports.  A bin report is a four-column tab-delimited file with
@@ -24,11 +25,11 @@ import org.theseed.reports.BinReport;
  * set of bin reports can be used to compare such populations for different conditions or to generate xmatrix inputs for
  * classifiers.
  *
- * The first positional parameter must be the name of a tab-delimited file with headers containing the feature IDs in the first column.
- * In our case, these are representative genome IDs.  The remaining positional parameters are arranged in pairs.  Each pair consists
- * of a label string followed by a file name.
+ * The first positional parameter must be the name of a tab-delimited file with headers containing the feature IDs in the first column
+ * and names in the second.  In our case, these are representative genome IDs and names.  The remaining positional parameters are
+ * arranged in pairs.  Each pair consists of a label string followed by a file name.
  *
- *  	parkinsons diseased.report.tbl control healthy.report.tbl
+ *  	rep100.stats.tbl parkinsons diseased.report.tbl control healthy.report.tbl
  *
  * specifies two bin reports:  "diseased.report.tbl" contains samples to be labeled "parkinsons", while "healthy.report.tbl" contains
  * samples to be labeled "control".
@@ -50,7 +51,7 @@ public abstract class BaseBinReportsProcessor extends BaseProcessor {
     /** logging facility */
     protected static Logger log = LoggerFactory.getLogger(BaseBinReportsProcessor.class);
     /** set of feature IDs */
-    private SortedSet<String> headings;
+    private SortedMap<String, String> featureMap;
     /** bin report data object */
     private BinReport data;
     /** list of condition labels on command line, in order */
@@ -86,12 +87,14 @@ public abstract class BaseBinReportsProcessor extends BaseProcessor {
             throw new ParseFailureException("Label/File parameters must be matched, but " + pairParmCount
                     + " found, which is an odd number.");
         final int pairCount = pairParmCount / 2;
+        if (pairCount < 1)
+            throw new ParseFailureException("At least one label/file pair must be specified (but 2 or more is better).");
         // Verify the feature ID set.
         if (! this.featIdFile.canRead())
             throw new FileNotFoundException("Feature ID file " + this.featIdFile + " is not found or unreadable.");
         // Read in the feature IDs.  We sort them so that the ordering is predictable.
-        this.headings = new TreeSet<String>(TabbedLineReader.readSet(this.featIdFile, "1"));
-        log.info("{} feature IDs read from {}.", this.headings.size(), this.featIdFile);
+        this.featureMap = new TreeMap<String, String>(TabbedLineReader.readMap(this.featIdFile, "1", "2"));
+        log.info("{} feature IDs read from {}.", this.featureMap.size(), this.featIdFile);
         // Now collect the labels and files.
         this.labels = new ArrayList<String>(pairCount);
         this.inFiles = new ArrayList<File>(pairCount);
@@ -121,13 +124,13 @@ public abstract class BaseBinReportsProcessor extends BaseProcessor {
     @Override
     protected final void runCommand() throws Exception {
         // Initialize the bin report data object.
-        this.data = new BinReport(this.headings);
+        this.data = new BinReport(this.featureMap.keySet());
         // Import the bin report files.
         final int pairCount = this.labels.size();
         for (int i = 0; i < pairCount; i++) {
             String label = this.labels.get(i);
             File inFile = this.inFiles.get(i);
-            log.info("Importing file {} of {} using label {}: {}", i, pairCount, label, inFile);
+            log.info("Importing file {} of {} using label {}: {}", i+1, pairCount, label, inFile);
             this.data.processFile(label, inFile);
         }
         log.info("{} samples imported using {} features.", this.data.size(), this.data.width());
@@ -144,5 +147,20 @@ public abstract class BaseBinReportsProcessor extends BaseProcessor {
      * @throws Exception
      */
     protected abstract void runBinReportAnalysis(BinReport sampleData) throws Exception;
+
+    /**
+     * @return the map of feature IDs to feature names
+     */
+    public Map<String, String> getFeatureMap() {
+        return this.featureMap;
+    }
+
+    /**
+     * @return the first input label specified
+     */
+    public String getLabel0() {
+        return this.labels.get(0);
+    }
+
 
 }

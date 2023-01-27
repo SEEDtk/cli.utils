@@ -1,7 +1,7 @@
 /**
  *
  */
-package org.theseed.reports;
+package org.theseed.binreports;
 
 import java.io.File;
 import java.io.IOException;
@@ -35,6 +35,16 @@ public class BinReport implements Iterable<BinReport.Sample> {
     private Map<String, Sample> sampleMap;
     /** map of feature IDs to feature indices */
     private Map<String, Integer> featureMap;
+    /** array of feature IDs, in order */
+    private String[] featureList;
+    /** minimum raw score for presence/absence scoring */
+    private double minScore;
+    /** number of ranking divisions to use for rank scoring */
+    private int divisions;
+    /** default minimum score */
+    private static final double DEFAULT_MIN = 150.0;
+    /** default number of ranking divisions */
+    private static final int DEFAULT_DIVISIONS = 100;
 
     /**
      * This object represents a single sample.
@@ -112,13 +122,19 @@ public class BinReport implements Iterable<BinReport.Sample> {
     public BinReport(Collection<String> featureIDs) throws ParseFailureException {
         // We need to run through the feature IDs, building the index map.
         this.featureMap = new HashMap<String, Integer>(featureIDs.size() * 4 / 3 + 1);
+        this.featureList = new String[featureIDs.size()];
         for (String featureId : featureIDs) {
             if (this.featureMap.containsKey(featureId))
                 throw new ParseFailureException("Duplicate feature ID \"" + featureId + " in bin report feature ID list.");
-            this.featureMap.put(featureId, this.featureMap.size());
+            int idx = this.featureMap.size();
+            this.featureMap.put(featureId, idx);
+            this.featureList[idx] = featureId;
         }
         // Create the sample map.
         this.sampleMap = new HashMap<String, Sample>(250);
+        // Set the score-normalization tuning parameters.
+        this.minScore = DEFAULT_MIN;
+        this.divisions = DEFAULT_DIVISIONS;
     }
 
     /**
@@ -200,6 +216,66 @@ public class BinReport implements Iterable<BinReport.Sample> {
     public Set<String> getLabels() {
         Set<String> retVal = this.sampleMap.values().stream().map(x -> x.getLabel()).collect(Collectors.toSet());
         return retVal;
+    }
+
+    /**
+     * @return the set of samples for a specified condition label
+     *
+     * @param label		condition label whose samples are desired
+     */
+    public Set<Sample> getSamplesForLabel(String label) {
+        Set<Sample> retVal = this.sampleMap.values().stream().filter(x -> x.getLabel().contentEquals(label)).collect(Collectors.toSet());
+        return retVal;
+    }
+
+    /**
+     * @return the sample with the specified ID, or NULL if there is none
+     *
+     * @param sampleId	ID of the desired sample
+     */
+    public Sample getSample(String sampleId) {
+        return this.sampleMap.get(sampleId);
+    }
+
+    /**
+     * @return the presence/absence scoring threshold
+     */
+    public double getMinScore() {
+        return this.minScore;
+    }
+
+    /**
+     * Specify the presence/absence scoring threshold.
+     *
+     * @param minScore 	the new value to set
+     */
+    public void setMinScore(double minScore) {
+        this.minScore = minScore;
+    }
+
+    /**
+     * @return the number of ranking divisions
+     */
+    public int getDivisions() {
+        return this.divisions;
+    }
+
+    /**
+     * Specify the number of ranking divisions to use.
+     *
+     * @param divisions 	the new value to set
+     */
+    public void setDivisions(int divisions) {
+        this.divisions = divisions;
+    }
+
+    /**
+     * @return the ID of the feature (column) with the specified column index
+     *
+     * @param idx		index of the desired column
+     */
+    public String getIdxFeature(int idx) {
+        return this.featureList[idx];
     }
 
 }

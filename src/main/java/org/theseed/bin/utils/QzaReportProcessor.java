@@ -81,6 +81,8 @@ public class QzaReportProcessor extends BaseProcessor {
     private int badSampleCount;
     /** writer for the progress file */
     private PrintWriter progressStream;
+    /** expected number of samples */
+    private static final int EXPECTED_SAMPLES = 1000;
 
     // COMMAND-LINE OPTIONS
 
@@ -288,7 +290,7 @@ public class QzaReportProcessor extends BaseProcessor {
         // Denote we have no bad samples.
         this.badSampleCount = 0;
         // Create the already-processed set.
-        this.processed = new HashSet<String>((XMatrixProcessor.EXPECTED_SAMPLES * 4 + 2) / 3);
+        this.processed = new HashSet<String>((EXPECTED_SAMPLES * 4 + 2) / 3);
         // Is this a new run?
         if (! this.resumeFlag) {
             log.info("Initializing for new output to file {}.", this.outFile);
