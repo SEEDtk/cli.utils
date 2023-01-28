@@ -44,7 +44,7 @@ public class XMatrixBinReportReporter extends BinReportReporter {
         // Now we create the header line for the skeleton training file and the data file.
         var headings = binReport.getHeadings();
         this.line = new StringBuilder(headings.length * 15 + 50);
-        this.line.append("sample_id\t");
+        this.line.append("sample_id");
         for (String heading : headings)
             this.line.append('\t').append(heading);
         this.line.append("\tcondition");

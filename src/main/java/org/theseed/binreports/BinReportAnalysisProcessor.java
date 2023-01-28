@@ -98,6 +98,7 @@ public class BinReportAnalysisProcessor extends BaseBinReportsProcessor implemen
         this.outputType = BinReportReporter.Type.XMATRIX;
         this.negLabel = null;
         this.clearFlag = false;
+        this.divisions = 100;
     }
 
     @Override
