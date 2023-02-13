@@ -78,6 +78,11 @@ public abstract class BinReportReporter {
          */
         public Map<String, String> getFeatureMap();
 
+        /**
+         * @return the output file base name for a testing file
+         */
+        public String getOutFileName();
+
     }
 
     /**
@@ -97,7 +102,29 @@ public abstract class BinReportReporter {
             public BinReportReporter create(IParms processor) throws IOException, ParseFailureException {
                 return new XMatrixBinReportReporter(processor);
             }
-        };
+        },
+        /** produce a testing file for a DL4J classifier */
+        TESTFILE {
+            @Override
+            public BinReportReporter create(IParms processor) throws IOException, ParseFailureException {
+                return new XFileBinReportReporter(processor, '\t');
+            }
+        },
+        /** produce a testing file for a KERAS classifier */
+        CSVFILE {
+            @Override
+            public BinReportReporter create(IParms processor) throws IOException, ParseFailureException {
+                return new XFileBinReportReporter(processor, ',');
+            }
+        },
+        /** report on the score variances between labels */
+        COMPARE {
+            @Override
+            public BinReportReporter create(IParms processor) throws IOException, ParseFailureException {
+                return new CompareBinReportReporter(processor);
+            }
+        }
+    ;
 
         /**
          * @return a reporting object of this type

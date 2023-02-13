@@ -95,6 +95,22 @@ public abstract class ScorePackaging {
             public boolean isBinary() {
                 return true;
             }
+        },
+        /** convert the scores to a binary presence/absence based on relationship to the median */
+        MEDIAN {
+            @Override
+            public ScorePackaging create(BinReport binReport) {
+                // This is rank score packaging with 2 ranks.
+                var retVal = new RankScorePackaging(binReport);
+                retVal.setDivisions(2);
+                return retVal;
+            }
+
+            @Override
+            public boolean isBinary() {
+                return true;
+            }
+
         };
 
         /**

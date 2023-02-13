@@ -3,6 +3,7 @@
  */
 package org.theseed.binreports;
 
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.commons.math3.util.ResizableDoubleArray;
 import org.junit.jupiter.api.Test;
 import org.theseed.binreports.scores.ScorePackaging;
@@ -127,11 +128,11 @@ class TestBinReport {
         normalizer = ScorePackaging.Type.RANK.create(report);
         normal = normalizer.getScores(sample);
         assertThat(sampleId, raw.length, equalTo(normal.length));
-        // We are going to see rank values from 0 to 0.9.  Create a list to hold each set of ranked values.
+        // We are going to see rank values from 0 to 1.0.  Create a list to hold each set of ranked values.
         ResizableDoubleArray[] valueLists = IntStream.range(0, 10).mapToObj(i -> new ResizableDoubleArray()).toArray(ResizableDoubleArray[]::new);
         // Loop through the two arrays, storing each value in the array for its rank.
         for (int i = 0; i < raw.length; i++) {
-            int idx = (int) (normal[i] * 10);
+            int idx = (int) (normal[i] * 9);
             valueLists[idx].addElement(raw[i]);
         }
         // The lengths should be roughly the same, and each value in a list should be less than each value in the next list.
@@ -142,6 +143,21 @@ class TestBinReport {
             if (newMin.isPresent()) {
                 assertThat(mess, newMin.getAsDouble(), greaterThan(oldMax));
                 oldMax = Arrays.stream(valueLists[i].getElements()).max().getAsDouble();
+            }
+        }
+        // Finally, test the MEDIAN packager.
+        normalizer = ScorePackaging.Type.MEDIAN.create(report);
+        normal = normalizer.getScores(sample);
+        assertThat(sampleId, raw.length, equalTo(normal.length));
+        DescriptiveStatistics stats = new DescriptiveStatistics(raw);
+        double median = stats.getPercentile(50.0);
+        for (int i = 0; i < raw.length; i++) {
+            String message = String.format("Comparing to %d for type %s and sample %s.", i, type, sampleId);
+            if (normal[i] == 1.0)
+                assertThat(message, raw[i], greaterThan(median));
+            else {
+                assertThat(message, normal[i], equalTo(0.0));
+                assertThat(message, raw[i], lessThanOrEqualTo(median));
             }
         }
     }

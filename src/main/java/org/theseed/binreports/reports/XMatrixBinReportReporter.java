@@ -7,26 +7,22 @@ import java.io.IOException;
 import java.io.PrintWriter;
 
 import org.theseed.binreports.BinReport;
-import org.theseed.binreports.BinReport.Sample;
 
 /**
  * This report produces a classifier input directory for the DL4J utilities.  We must generate the label file,
  * the skeleton training table, and the data table from which it will be filled.  Finally, there is a marker
  * file to indicate we want to use random forest.
  *
+ * This class is pretty much the same as XFileBinReportReporter, except that extra files are needed in the output
+ * directory.
+ *
  * @author Bruce Parrello
  *
  */
-public class XMatrixBinReportReporter extends BinReportReporter {
-
-    // FIELDS
-    /** output writer for data file */
-    private PrintWriter dataWriter;
-    /** buffer for building output lines */
-    private StringBuilder line;
+public class XMatrixBinReportReporter extends XFileBinReportReporter {
 
     public XMatrixBinReportReporter(IParms processor) throws IOException {
-        super(processor);
+        super(processor, '\t');
     }
 
     @Override
@@ -42,40 +38,11 @@ public class XMatrixBinReportReporter extends BinReportReporter {
         markerWriter.println("RandomForest");
         markerWriter.flush();
         // Now we create the header line for the skeleton training file and the data file.
-        var headings = binReport.getHeadings();
-        this.line = new StringBuilder(headings.length * 15 + 50);
-        this.line.append("sample_id");
-        for (String heading : headings)
-            this.line.append('\t').append(heading);
-        this.line.append("\tcondition");
+        String lineString = this.setHeadings(binReport, "data.tbl");
+        // Write out the skeleton training file.
         PrintWriter trainingWriter = this.openOutFile("training.tbl");
-        this.dataWriter = this.openOutFile("data.tbl");
-        String lineString = this.line.toString();
         trainingWriter.println(lineString);
         trainingWriter.flush();
-        this.dataWriter.println(lineString);
-    }
-
-    @Override
-    protected void startLabel(String label) {
-    }
-
-    @Override
-    protected void processSample(Sample sample, double[] scores) {
-        this.line.setLength(0);
-        this.line.append(sample.getSampleId());
-        for (double score : scores)
-            this.line.append('\t').append(score);
-        this.line.append('\t').append(sample.getLabel());
-        this.dataWriter.println(this.line.toString());
-    }
-
-    @Override
-    protected void finishLabel() {
-    }
-
-    @Override
-    protected void finishReport() {
     }
 
 }

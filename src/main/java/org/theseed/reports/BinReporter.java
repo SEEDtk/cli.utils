@@ -55,6 +55,13 @@ public abstract class BinReporter extends BaseReporter {
             public BinReporter create(OutputStream output, IParms processor) throws ParseFailureException, IOException {
                 return new GenomesBinReport(output, processor);
             }
+        },
+        REPGENS {
+            @Override
+            public BinReporter create(OutputStream output, IParms processor) throws ParseFailureException, IOException {
+                return new RepGensBinReport(output, processor);
+            }
+
         };
 
         public abstract BinReporter create(OutputStream output, IParms processor) throws ParseFailureException, IOException;

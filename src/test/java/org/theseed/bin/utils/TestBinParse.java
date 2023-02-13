@@ -25,10 +25,10 @@ import org.junit.jupiter.api.Test;
 public class TestBinParse {
 
     @Test
-    public void test() throws IOException {
+    public void testBinHtmlParse() throws IOException {
         File targetFile = new File("data", "BinningReport.html");
         String htmlString = FileUtils.readFileToString(targetFile, Charset.defaultCharset());
-        Matcher m = BinReportProcessor.TABLE_PATTERN.matcher(htmlString);
+        Matcher m = BinStatsProcessor.TABLE_PATTERN.matcher(htmlString);
         assertThat(m.find(), equalTo(true));
         String table = m.group(2);
         assertThat(table, startsWith("<table"));

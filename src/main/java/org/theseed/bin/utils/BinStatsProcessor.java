@@ -60,11 +60,11 @@ import org.theseed.utils.ParseFailureException;
  * @author Bruce Parrello
  *
  */
-public class BinReportProcessor extends BaseProcessor implements BinReporter.IParms {
+public class BinStatsProcessor extends BaseProcessor implements BinReporter.IParms {
 
     // FIELDS
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(BinReportProcessor.class);
+    protected static Logger log = LoggerFactory.getLogger(BinStatsProcessor.class);
     /** output stream */
     private OutputStream outStream;
     /** set of job IDs to use, or NULL to use all */
@@ -184,7 +184,7 @@ public class BinReportProcessor extends BaseProcessor implements BinReporter.IPa
                             if (! m.find())
                                 log.warn("No bin counts found for sample {}.", sampleId);
                             else {
-                                m = BinReportProcessor.TABLE_PATTERN.matcher(htmlString);
+                                m = BinStatsProcessor.TABLE_PATTERN.matcher(htmlString);
                                 while (m.find()) {
                                     int type = (m.group(1).contentEquals("good") ? 1 : 0);
                                     log.info("Searching for {}-bin genome IDs in sample {}.", m.group(1), sampleId);

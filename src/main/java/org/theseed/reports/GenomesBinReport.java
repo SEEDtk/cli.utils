@@ -44,7 +44,7 @@ public class GenomesBinReport extends BinReporter {
      * This dinky class tracks the data for a single genome.  It is sorted by
      * score.
      */
-    private static class GenomeData implements Comparable<GenomeData> {
+    protected static class GenomeData implements Comparable<GenomeData> {
 
         private double score;
         private String genomeId;
@@ -114,6 +114,28 @@ public class GenomesBinReport extends BinReporter {
         public void setRepId(String repId) {
             this.repId = repId;
         }
+
+        /**
+         * @return the ID of the sample containing the binned genome
+         */
+        public String getSampleId() {
+            return this.sampleId;
+        }
+
+        /**
+         * @return the dna size of the binned genome
+         */
+        public int getDnaSize() {
+            return this.dnaSize;
+        }
+
+        /**
+         * @return the ID of the genome's representative (or NULL if none)
+         */
+        public String getRepId() {
+            return this.repId;
+        }
+
     }
 
     public GenomesBinReport(OutputStream output, IParms processor) throws ParseFailureException, IOException {
@@ -142,9 +164,23 @@ public class GenomesBinReport extends BinReporter {
 
     @Override
     public void closeReport() {
-        writeGenomes(this.typeGenomes.get(1));
+        writeGenomes(this.getGoodGenomes());
         if (this.isAllFlag())
-            writeGenomes(this.typeGenomes.get(0));
+            writeGenomes(this.getBadGenomes());
+    }
+
+    /**
+     * @return the sorted set of GenomeData objects for the good genomes
+     */
+    protected SortedSet<GenomeData> getGoodGenomes() {
+        return this.typeGenomes.get(1);
+    }
+
+    /**
+     * @return the sorted set of GenomeData objects for the bad genomes
+     */
+    protected SortedSet<GenomeData> getBadGenomes() {
+        return this.typeGenomes.get(0);
     }
 
     /**
@@ -160,16 +196,16 @@ public class GenomesBinReport extends BinReporter {
     }
 
     /**
-     * Compute the representative-genome IDs for all of the genomes in the list
+     * Compute the representative-genome IDs for all of the genomes in the list and store it in the GenomeData.
      *
-     * @param myGenomes		set of genomes to process
+     * @param genomesIn		set of genomes to process
      */
-    private void computeRepIds(SortedSet<GenomeData> myGenomes) {
+    protected void computeRepIds(Collection<GenomeData> genomesIn) {
         // Get the representative for each genome.
-        Collection<String> genomes = myGenomes.stream().map(x -> x.getGenomeId()).collect(Collectors.toList());
+        Collection<String> genomes = genomesIn.stream().map(x -> x.getGenomeId()).collect(Collectors.toList());
         Map<String, RepGenomeDb.Representation> repMap = P3RepGenomeDb.getReps(this.p3, genomes, this.repgens);
         // Loop through the genomes, storing rep IDs when we have them, and deleting the genome when we don't.
-        Iterator<GenomeData> iter = myGenomes.iterator();
+        Iterator<GenomeData> iter = genomesIn.iterator();
         while (iter.hasNext()) {
             GenomeData genome = iter.next();
             RepGenomeDb.Representation rep = repMap.get(genome.getGenomeId());
@@ -179,6 +215,13 @@ public class GenomesBinReport extends BinReporter {
             } else
                 genome.setRepId(rep.getGenomeId());
         }
+    }
+
+    /**
+     * @return the repgen database
+     */
+    public RepGenomeDb getRepgenDb() {
+        return this.repgens;
     }
 
 }

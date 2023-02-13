@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test;
 class TestPerlRun {
 
     @Test
-    void test() throws FileNotFoundException {
+    void testPerlProgram() throws FileNotFoundException {
         BinPipeline.setBinPath(new File("data"));
         File dataFile = new File("data", "test.fasta");
         var pipe = new BinPipeline();

@@ -4,9 +4,6 @@
 package org.theseed.binreports.scores;
 
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-
 import org.theseed.binreports.BinReport;
 
 /**
@@ -23,35 +20,6 @@ public class RankScorePackaging extends ScorePackaging {
     /** number of divisions */
     private int nDivisions;
 
-    /**
-     * This is a utility object that allows us to sort the scores.
-     */
-    protected class ScoreHolder implements Comparable<ScoreHolder> {
-
-        /** index of score in the score array */
-        private int idx;
-        /** value of score */
-        private double score;
-
-        /**
-         * Create a score holder for a specified position in the array.
-         *
-         * @param i			index into the scoring array
-         * @param scores	scoring array
-         */
-        protected ScoreHolder(int i, double[] scores) {
-            this.idx = i;
-            this.score = scores[i];
-        }
-
-        @Override
-        public int compareTo(ScoreHolder o) {
-            int retVal = Double.compare(this.score, o.score);
-            if (retVal == 0)
-                retVal = this.idx - o.idx;
-            return retVal;
-        }
-    }
 
     public RankScorePackaging(BinReport binReport) {
         super(binReport);
@@ -61,8 +29,7 @@ public class RankScorePackaging extends ScorePackaging {
     @Override
     protected void computeScores(double[] scores) {
         // Copy the array to a sorted list of score holders.  The holders remember the original array index.
-        List<ScoreHolder> holders = IntStream.range(0, scores.length).mapToObj(i -> new ScoreHolder(i, scores))
-                .sorted().collect(Collectors.toList());
+        List<ScoreHolder> holders = ScoreHolder.sortScores(scores);
         // Save the length and last index of the holder list.
         final int hSize = holders.size();
         final int lastHIdx = hSize - 1;
@@ -72,23 +39,32 @@ public class RankScorePackaging extends ScorePackaging {
         int nextIdx = 0;
         for (int i = 0; i < this.nDivisions; i++) {
             // This is the score to store.
-            double score = (double) i / this.nDivisions;
-            // Compute the stopping point.  We make a safety check to insure we don't round ourselves
+            double score = (double) i / (this.nDivisions - 1);
+            // Compute the stopping point.  We make a safety check to insure we don't round ourselves out of range.
             int lastIdx = Math.round((float) ((i + 1) * holders.size()) / this.nDivisions);
             if (lastIdx > hSize) lastIdx = hSize;
             // Only proceed if there is anything here.
             if (lastIdx > 0) {
                 // Extend the stopping point past the last identical values.  Identical values always rank the same.
-                while (lastIdx < lastHIdx && holders.get(lastIdx).score == holders.get(lastIdx-1).score)
+                while (lastIdx < lastHIdx && holders.get(lastIdx).getScore() == holders.get(lastIdx-1).getScore())
                     lastIdx++;
                 // Now we store the current score for every score from "nextIdx" up to but not including "lastIdx".
                 while (nextIdx < lastIdx) {
                     ScoreHolder holder = holders.get(nextIdx);
-                    scores[holder.idx] = score;
+                    scores[holder.getIdx()] = score;
                     nextIdx++;
                 }
             }
         }
+    }
+
+    /**
+     * Specify a new number of divisions to use.
+     *
+     * @param newVal	the number of divisions to use
+     */
+    public void setDivisions(int newVal) {
+        this.nDivisions = newVal;
     }
 
 }

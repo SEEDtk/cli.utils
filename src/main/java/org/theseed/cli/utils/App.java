@@ -2,7 +2,7 @@ package org.theseed.cli.utils;
 
 import java.util.Arrays;
 
-import org.theseed.bin.utils.BinReportProcessor;
+import org.theseed.bin.utils.BinStatsProcessor;
 import org.theseed.bin.utils.BinTestProcessor;
 import org.theseed.bin.utils.QzaReportProcessor;
 import org.theseed.binreports.BinReportAnalysisProcessor;
@@ -11,8 +11,7 @@ import org.theseed.utils.BaseProcessor;
 /**
  * Commands for utilities relating to CLI processing.
  *
- * binStats	determine bin composition in a PATRIC workspace directory
- * xMatrix		convert bin reports into a classification matrix
+ * binStats		determine bin composition in a PATRIC workspace directory
  * gtoRoles		get proteins from genomes based on roles
  * qzaReport	determine bin composition in trimmed Amplicon database
  * xTotals		output the total value of each column in an xmatrix
@@ -20,7 +19,7 @@ import org.theseed.utils.BaseProcessor;
  * roleTable	output sequences from genomes with functions
  * qzaDump		convert the samples in a QZA file to FASTA files
  * binTest		test the binning code on a directory of samples
- * binReport		compare bin reports for different sample states
+ * binReport	analyze bin reports to produce reports or classifier data
  */
 public class App
 {
@@ -33,7 +32,7 @@ public class App
         // Determine the command to process.
         switch (command) {
         case "binStats" :
-            processor = new BinReportProcessor();
+            processor = new BinStatsProcessor();
             break;
         case "qzaReport" :
             processor = new QzaReportProcessor();

@@ -35,6 +35,7 @@ import org.theseed.utils.ParseFailureException;
  * -h	display command-line usage
  * -v	display more frequent log messages
  * -O	output directory (default is the current directory)
+ * -o	output file for single-file reports (default is "report.tbl" in the current directory
  *
  * --minScore	minimum score for THRESHOLD score normalization (default 1500.0)
  * --method		score-packaging method for score normalization (default THRESHOLD)
@@ -54,12 +55,18 @@ public class BinReportAnalysisProcessor extends BaseBinReportsProcessor implemen
     protected static Logger log = LoggerFactory.getLogger(BinReportAnalysisProcessor.class);
     /** report writer */
     private BinReportReporter reportWriter;
+    /** output file name (if any) */
+    private String outFileName;
 
     // COMMAND-LINE OPTIONS
 
-    /** output file for report (if not STDOUT) */
+    /** output directory for reports */
     @Option(name = "--outDir", aliases = { "-O" }, metaVar = "reportDir", usage = "output direxctory for reports")
     private File outDir;
+
+    /** output file for single-file reports */
+    @Option(name = "--output", aliases = { "-o" }, metaVar = "ClassDir/testFile.csv", usage = "output file for single-file reports")
+    private File outFile;
 
     /** minimum score for threshold normalization */
     @Option(name = "--minScore", metaVar = "100.0", usage = "minimum score for a representative group to be considered present (THRESHOLD only)")
@@ -95,6 +102,7 @@ public class BinReportAnalysisProcessor extends BaseBinReportsProcessor implemen
         this.methodType = ScorePackaging.Type.HIGH_LOW;
         this.minFrac = 0.80;
         this.outDir = new File(System.getProperty("user.dir"));
+        this.outFile = null;
         this.outputType = BinReportReporter.Type.XMATRIX;
         this.negLabel = null;
         this.clearFlag = false;
@@ -114,7 +122,18 @@ public class BinReportAnalysisProcessor extends BaseBinReportsProcessor implemen
             this.negLabel = this.getLabel0();
             log.info("Negative-outcome label defaulting to {}.", this.negLabel);
         }
+        // Validate the number of divisions.
+        if (this.divisions < 2)
+            throw new ParseFailureException("Number of divisions must be aat least 2.");
+        // Parse out the output directory and file (if any).
+        if (this.outFile != null) {
+            this.outDir = this.outFile.getParentFile();
+            this.outFileName = this.outFile.getName();
+            log.info("Output file name specified.  Output directory set to {}.", this.outDir);
+        } else
+            this.outFileName = null;
         // Create the report writer.  This has to be done last, to insure all the parameter values are filled in.
+        // It is here that the output directory is initialized and cleared.
         this.reportWriter = this.outputType.create(this);
     }
 
@@ -150,6 +169,11 @@ public class BinReportAnalysisProcessor extends BaseBinReportsProcessor implemen
     @Override
     public double getCommonFrac() {
         return this.minFrac;
+    }
+
+    @Override
+    public String getOutFileName() {
+        return this.outFileName;
     }
 
 }
