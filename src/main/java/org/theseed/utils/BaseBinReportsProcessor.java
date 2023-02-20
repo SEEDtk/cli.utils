@@ -66,7 +66,7 @@ public abstract class BaseBinReportsProcessor extends BaseProcessor {
     private File featIdFile;
 
     /** label/file pairs */
-    @Argument(index = 1, metaVar = "label1 file1 label2 file2 ...", usage = "list of output labels and file names")
+    @Argument(index = 1, metaVar = "label1 file1 label2 file2 ...", usage = "list of output labels and file names", required = true)
     private List<String> specs;
 
     @Override

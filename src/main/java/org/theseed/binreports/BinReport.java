@@ -191,11 +191,13 @@ public class BinReport implements Iterable<BinReport.Sample> {
         try (TabbedLineReader fileStream = new TabbedLineReader(file)) {
             log.info("Processing bin report file {} with label {}.", file, label);
             int sampleIdIdx = fileStream.findField("sample_id");
-            int groupIdx = fileStream.findField("repgen_id");
+            int groupIdx = fileStream.findColumn("rep_id");
+            if (groupIdx < 0)
+                groupIdx = fileStream.findField("repgen_id");
             // We allow either "count" or "score" for the last column.
             int scoreIdx = fileStream.findColumn("count");
             if (scoreIdx < 0)
-                scoreIdx = fileStream.findColumn("score");
+                scoreIdx = fileStream.findField("score");
             // Loop through the data lines.Denote we have no sample yet.
             int lineIn = 0;
             for (var line : fileStream) {
