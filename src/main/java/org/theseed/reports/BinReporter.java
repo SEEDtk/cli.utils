@@ -56,6 +56,7 @@ public abstract class BinReporter extends BaseReporter {
                 return new GenomesBinReport(output, processor);
             }
         },
+        /** list the bins by repgen */
         REPGENS {
             @Override
             public BinReporter create(OutputStream output, IParms processor) throws ParseFailureException, IOException {
