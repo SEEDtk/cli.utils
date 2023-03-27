@@ -200,7 +200,7 @@ public class QzaReportProcessor extends BaseProcessor {
             for (File inFile : this.inFiles) {
                 // Get the samples in this file.
                 this.inputGroup = this.sourceType.create(inFile);
-                this.samples = this.inputGroup.getSamples();
+                this.samples = this.inputGroup.getSampleIDs();
                 log.info("{} samples of type {} found in source {}.", this.samples.size(), this.sourceType.toString(), inFile);
                 // Remove the ones already processed.
                 this.samples.removeAll(this.processed);

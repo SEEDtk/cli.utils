@@ -92,7 +92,7 @@ public class QzaDumpProcessor extends BaseProcessor {
         if (! this.inFile.exists())
             throw new FileNotFoundException("Input source " + this.inFile + " not found.");
         this.sampleGroup = this.sourceType.create(this.inFile);
-        this.sampleIDs = this.sampleGroup.getSamples();
+        this.sampleIDs = this.sampleGroup.getSampleIDs();
         log.info("{} samples found in {}.", this.sampleIDs.size(), this.inFile);
         // Set up the output directory.
         if (! this.outDir.isDirectory()) {
