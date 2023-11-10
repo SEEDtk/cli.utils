@@ -15,6 +15,8 @@ import java.util.TreeMap;
 import org.kohsuke.args4j.Argument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.theseed.basic.BaseProcessor;
+import org.theseed.basic.ParseFailureException;
 import org.theseed.binreports.BinReport;
 import org.theseed.io.TabbedLineReader;
 

@@ -6,9 +6,9 @@ package org.theseed.binreports;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.commons.math3.util.ResizableDoubleArray;
 import org.junit.jupiter.api.Test;
+import org.theseed.basic.ParseFailureException;
 import org.theseed.binreports.scores.ScorePackaging;
 import org.theseed.io.TabbedLineReader;
-import org.theseed.utils.ParseFailureException;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;

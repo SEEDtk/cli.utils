@@ -8,9 +8,9 @@ import java.io.OutputStream;
 import java.util.Collection;
 import java.util.HashMap;
 
+import org.theseed.basic.ParseFailureException;
 import org.theseed.counters.WeightMap;
 import org.theseed.proteins.kmers.reps.RepGenomeDb;
-import org.theseed.utils.ParseFailureException;
 
 /**
  * This is a version of the genome bin report designed for the creation of xmatrix files.  It produces a standard-format

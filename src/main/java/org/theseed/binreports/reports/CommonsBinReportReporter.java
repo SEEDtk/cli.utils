@@ -11,9 +11,9 @@ import java.util.TreeMap;
 import java.util.stream.IntStream;
 
 import org.apache.commons.lang3.StringUtils;
+import org.theseed.basic.ParseFailureException;
 import org.theseed.binreports.BinReport;
 import org.theseed.binreports.BinReport.Sample;
-import org.theseed.utils.ParseFailureException;
 
 /**
  * This command produces two report files.  One lists every commonly-occurring represented set for each condition label.

@@ -2,11 +2,11 @@ package org.theseed.cli.utils;
 
 import java.util.Arrays;
 
+import org.theseed.basic.BaseProcessor;
 import org.theseed.bin.utils.BinStatsProcessor;
 import org.theseed.bin.utils.BinTestProcessor;
 import org.theseed.bin.utils.QzaReportProcessor;
 import org.theseed.binreports.BinReportAnalysisProcessor;
-import org.theseed.utils.BaseProcessor;
 
 /**
  * Commands for utilities relating to CLI processing.

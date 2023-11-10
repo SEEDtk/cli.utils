@@ -15,8 +15,8 @@ import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.theseed.basic.ParseFailureException;
 import org.theseed.io.TabbedLineReader;
-import org.theseed.utils.ParseFailureException;
 
 /**
  * This object describes a bin report.  It takes as input an ordered collection of feature IDs, and then reads the

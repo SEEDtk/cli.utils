@@ -28,14 +28,14 @@ import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.theseed.basic.BaseProcessor;
+import org.theseed.basic.ParseFailureException;
 import org.theseed.cli.CopyTask;
 import org.theseed.cli.DirEntry;
 import org.theseed.cli.DirTask;
 import org.theseed.cli.PatricException;
 import org.theseed.io.TabbedLineReader;
 import org.theseed.reports.BinReporter;
-import org.theseed.utils.BaseProcessor;
-import org.theseed.utils.ParseFailureException;
 
 /**
  * This command produces a report on the bins in an output directory.  The binning report for each job in the directory is

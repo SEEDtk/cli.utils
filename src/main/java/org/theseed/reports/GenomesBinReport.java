@@ -17,10 +17,10 @@ import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.theseed.basic.ParseFailureException;
 import org.theseed.p3api.P3Connection;
 import org.theseed.proteins.kmers.reps.P3RepGenomeDb;
 import org.theseed.proteins.kmers.reps.RepGenomeDb;
-import org.theseed.utils.ParseFailureException;
 
 /**
  * This bin report lists the IDs of the good genomes.

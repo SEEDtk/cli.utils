@@ -13,13 +13,13 @@ import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.theseed.basic.BaseProcessor;
+import org.theseed.basic.ParseFailureException;
 import org.theseed.sequence.FastaOutputStream;
 import org.theseed.sequence.Sequence;
 import org.theseed.sequence.fastq.FastqSampleGroup;
 import org.theseed.sequence.fastq.ReadStream;
 import org.theseed.sequence.fastq.SeqRead;
-import org.theseed.utils.BaseProcessor;
-import org.theseed.utils.ParseFailureException;
 
 /**
  * This command reads a QZA file and converts each sample to a pair of FASTA files in the specified output directory.

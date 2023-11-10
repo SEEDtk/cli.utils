@@ -16,9 +16,9 @@ import java.util.TreeSet;
 import org.kohsuke.args4j.Argument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.theseed.basic.ParseFailureException;
 import org.theseed.io.TabbedLineReader;
 import org.theseed.utils.BasePipeProcessor;
-import org.theseed.utils.ParseFailureException;
 
 /**
  * This is a simpe utility that takes as input an xmatrix file and outputs the total

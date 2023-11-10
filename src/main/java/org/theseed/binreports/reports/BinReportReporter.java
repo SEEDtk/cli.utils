@@ -15,9 +15,9 @@ import java.util.stream.Collectors;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.theseed.basic.ParseFailureException;
 import org.theseed.binreports.BinReport;
 import org.theseed.binreports.scores.ScorePackaging;
-import org.theseed.utils.ParseFailureException;
 
 /**
  * This method outputs data from sample bin reports to a specified directory.  The output directory will contain one or more

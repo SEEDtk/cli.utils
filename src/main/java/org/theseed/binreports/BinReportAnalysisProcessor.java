@@ -10,9 +10,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.binreports.scores.ScorePackaging;
 import org.theseed.binreports.scores.ScorePackaging.Type;
+import org.theseed.basic.ParseFailureException;
 import org.theseed.binreports.reports.BinReportReporter;
 import org.theseed.utils.BaseBinReportsProcessor;
-import org.theseed.utils.ParseFailureException;
 
 /**
  * This command analyzes bin reports for different conditions (output labels).  It can be used to produce useful
