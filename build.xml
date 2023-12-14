@@ -3,20 +3,28 @@
     <!--this file was created by Eclipse Runnable JAR Export Wizard-->
     <!--ANT 1.7 is required                                        -->
     <!--define folder properties-->
-    <property environment="env" />
     <property name="dir.buildfile" value="."/>
-    <property name="dir.workspace" value="${dir.buildfile}/.."/>
-    <property name="dir.jarfile" value="${dir.workspace}/kernel/jars"/>
+    <property environment="env" />
+    <property name="dir.workspace" value="${dir.buildfile}/../.."/>
+    <property name="dir.jarfile" value="${dir.workspace}/git/kernel/jars"/>
     <target name="create_run_jar">
         <jar destfile="${dir.jarfile}/cli.utils.jar" filesetmanifest="mergewithoutmain">
             <manifest>
                 <attribute name="Main-Class" value="org.theseed.cli.utils.App"/>
                 <attribute name="Class-Path" value="."/>
             </manifest>
+            <fileset dir="${dir.buildfile}/target/test-classes"/>
             <fileset dir="${dir.buildfile}/target/classes"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/apache/commons/commons-lang3/3.9/commons-lang3-3.9.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/jsoup/jsoup/1.13.1/jsoup-1.13.1.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/junit/jupiter/junit-jupiter-engine/5.8.1/junit-jupiter-engine-5.8.1.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/junit/platform/junit-platform-engine/1.8.1/junit-platform-engine-1.8.1.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/opentest4j/opentest4j/1.2.0/opentest4j-1.2.0.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/junit/platform/junit-platform-commons/1.8.1/junit-platform-commons-1.8.1.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/junit/jupiter/junit-jupiter-api/5.8.1/junit-jupiter-api-5.8.1.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/apiguardian/apiguardian-api/1.1.2/apiguardian-api-1.1.2.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/args4j/args4j/2.33/args4j-2.33.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/hamcrest/hamcrest/2.2/hamcrest-2.2.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/apache/httpcomponents/httpclient/4.5.13/httpclient-4.5.13.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/apache/httpcomponents/httpcore/4.4.13/httpcore-4.4.13.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/commons-logging/commons-logging/1.2/commons-logging-1.2.jar"/>
@@ -30,58 +38,19 @@
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/apache/poi/poi/5.0.0/poi-5.0.0.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/slf4j/jcl-over-slf4j/1.7.30/jcl-over-slf4j-1.7.30.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/apache/commons/commons-collections4/4.4/commons-collections4-4.4.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/apache/commons/commons-math3/3.6.1/commons-math3-3.6.1.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/com/zaxxer/SparseBitSet/1.2/SparseBitSet-1.2.jar"/>
-            <fileset dir="${dir.workspace}/brc.parent/p3api/target/classes"/>
+            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/apache/commons/commons-math3/3.6.1/commons-math3-3.6.1.jar"/>
+            <fileset dir="${dir.workspace}/git/brc.parent/p3api/target/classes"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/apache/commons/commons-text/1.10.0/commons-text-1.10.0.jar"/>
-            <fileset dir="${dir.workspace}/brc.parent/shared/target/classes"/>
-            <fileset dir="${dir.workspace}/brc.parent/sequence/target/classes"/>
+            <fileset dir="${dir.workspace}/git/brc.parent/shared/target/classes"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/com/github/eprst/murmur3/0.3/murmur3-0.3.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/com/j2html/j2html/1.4.0/j2html-1.4.0.jar"/>
-            <fileset dir="${dir.workspace}/brc.parent/dl4j.eval/target/classes"/>
-            <fileset dir="${dir.workspace}/brc.parent/dl4j.decision/target/classes"/>
-            <fileset dir="${dir.workspace}/brc.parent/bins.generate/target/classes"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/nd4j/nd4j-native-platform/1.0.0-M2.1/nd4j-native-platform-1.0.0-M2.1.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/openblas-platform/0.3.19-1.5.7/openblas-platform-0.3.19-1.5.7.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/javacpp-platform/1.5.7/javacpp-platform-1.5.7.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/javacpp/1.5.7/javacpp-1.5.7-android-arm.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/javacpp/1.5.7/javacpp-1.5.7-android-arm64.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/javacpp/1.5.7/javacpp-1.5.7-android-x86.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/javacpp/1.5.7/javacpp-1.5.7-android-x86_64.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/javacpp/1.5.7/javacpp-1.5.7-ios-arm64.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/javacpp/1.5.7/javacpp-1.5.7-ios-x86_64.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/javacpp/1.5.7/javacpp-1.5.7-linux-armhf.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/javacpp/1.5.7/javacpp-1.5.7-linux-arm64.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/javacpp/1.5.7/javacpp-1.5.7-linux-ppc64le.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/javacpp/1.5.7/javacpp-1.5.7-linux-x86.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/javacpp/1.5.7/javacpp-1.5.7-linux-x86_64.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/javacpp/1.5.7/javacpp-1.5.7-macosx-arm64.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/javacpp/1.5.7/javacpp-1.5.7-macosx-x86_64.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/javacpp/1.5.7/javacpp-1.5.7-windows-x86.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/openblas/0.3.19-1.5.7/openblas-0.3.19-1.5.7.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/openblas/0.3.19-1.5.7/openblas-0.3.19-1.5.7-android-arm.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/openblas/0.3.19-1.5.7/openblas-0.3.19-1.5.7-android-arm64.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/openblas/0.3.19-1.5.7/openblas-0.3.19-1.5.7-android-x86.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/openblas/0.3.19-1.5.7/openblas-0.3.19-1.5.7-android-x86_64.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/openblas/0.3.19-1.5.7/openblas-0.3.19-1.5.7-ios-arm64.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/openblas/0.3.19-1.5.7/openblas-0.3.19-1.5.7-ios-x86_64.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/openblas/0.3.19-1.5.7/openblas-0.3.19-1.5.7-linux-x86.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/openblas/0.3.19-1.5.7/openblas-0.3.19-1.5.7-linux-x86_64.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/openblas/0.3.19-1.5.7/openblas-0.3.19-1.5.7-linux-armhf.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/openblas/0.3.19-1.5.7/openblas-0.3.19-1.5.7-linux-arm64.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/openblas/0.3.19-1.5.7/openblas-0.3.19-1.5.7-linux-ppc64le.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/openblas/0.3.19-1.5.7/openblas-0.3.19-1.5.7-macosx-arm64.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/openblas/0.3.19-1.5.7/openblas-0.3.19-1.5.7-macosx-x86_64.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/openblas/0.3.19-1.5.7/openblas-0.3.19-1.5.7-windows-x86.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/openblas/0.3.19-1.5.7/openblas-0.3.19-1.5.7-windows-x86_64.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/mkl-platform/2022.0-1.5.7/mkl-platform-2022.0-1.5.7.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/mkl/2022.0-1.5.7/mkl-2022.0-1.5.7.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/mkl/2022.0-1.5.7/mkl-2022.0-1.5.7-linux-x86.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/mkl/2022.0-1.5.7/mkl-2022.0-1.5.7-linux-x86_64.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/mkl/2022.0-1.5.7/mkl-2022.0-1.5.7-macosx-x86_64.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/mkl/2022.0-1.5.7/mkl-2022.0-1.5.7-windows-x86.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/mkl/2022.0-1.5.7/mkl-2022.0-1.5.7-windows-x86_64.jar"/>
+            <fileset dir="${dir.workspace}/git/brc.parent/basic/target/classes"/>
+            <fileset dir="${dir.workspace}/git/brc.parent/dl4j.eval/target/classes"/>
+            <fileset dir="${dir.workspace}/git/brc.parent/sequence/target/classes"/>
+            <fileset dir="${dir.workspace}/git/brc.parent/dl4j.decision/target/classes"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/nd4j/nd4j-native/1.0.0-M2.1/nd4j-native-1.0.0-M2.1.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/nd4j/nd4j-native/1.0.0-M2.1/nd4j-native-1.0.0-M2.1-macosx-x86_64.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/javacpp/1.5.7/javacpp-1.5.7.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/nd4j/nd4j-api/1.0.0-M2.1/nd4j-api-1.0.0-M2.1.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/com/jakewharton/byteunits/byteunits/0.9.1/byteunits-0.9.1.jar"/>
@@ -99,16 +68,12 @@
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/nd4j/nd4j-native-api/1.0.0-M2.1/nd4j-native-api-1.0.0-M2.1.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/nd4j/nd4j-native-preset/1.0.0-M2.1/nd4j-native-preset-1.0.0-M2.1.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/nd4j/nd4j-presets-common/1.0.0-M2.1/nd4j-presets-common-1.0.0-M2.1.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/nd4j/nd4j-native-preset/1.0.0-M2.1/nd4j-native-preset-1.0.0-M2.1-windows-x86_64.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/javacpp/1.5.7/javacpp-1.5.7-windows-x86_64.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/nd4j/nd4j-native/1.0.0-M2.1/nd4j-native-1.0.0-M2.1-android-arm.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/nd4j/nd4j-native/1.0.0-M2.1/nd4j-native-1.0.0-M2.1-android-arm64.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/nd4j/nd4j-native/1.0.0-M2.1/nd4j-native-1.0.0-M2.1-android-x86.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/nd4j/nd4j-native/1.0.0-M2.1/nd4j-native-1.0.0-M2.1-android-x86_64.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/nd4j/nd4j-native/1.0.0-M2.1/nd4j-native-1.0.0-M2.1-linux-x86_64.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/nd4j/nd4j-native/1.0.0-M2.1/nd4j-native-1.0.0-M2.1-macosx-x86_64.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/nd4j/nd4j-native/1.0.0-M2.1/nd4j-native-1.0.0-M2.1-windows-x86_64.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/nd4j/nd4j-native/1.0.0-M2.1/nd4j-native-1.0.0-M2.1-linux-armhf.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/nd4j/nd4j-native-preset/1.0.0-M2.1/nd4j-native-preset-1.0.0-M2.1-macosx-x86_64.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/openblas/0.3.19-1.5.7/openblas-0.3.19-1.5.7.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/openblas/0.3.19-1.5.7/openblas-0.3.19-1.5.7-macosx-x86_64.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/javacpp/1.5.7/javacpp-1.5.7-macosx-x86_64.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/nd4j/nd4j-native/1.0.0-M2.1/nd4j-native-1.0.0-M2.1-linux-x86_64-compat.jar"/>
+            <fileset dir="${dir.workspace}/git/brc.parent/bins.generate/target/classes"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/apache/poi/poi-ooxml/5.0.0/poi-ooxml-5.0.0.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/apache/poi/poi-ooxml-lite/5.0.0/poi-ooxml-lite-5.0.0.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/apache/xmlbeans/xmlbeans/4.0.0/xmlbeans-4.0.0.jar"/>
@@ -117,6 +82,8 @@
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bouncycastle/bcpkix-jdk15on/1.68/bcpkix-jdk15on-1.68.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bouncycastle/bcprov-jdk15on/1.68/bcprov-jdk15on-1.68.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/apache/santuario/xmlsec/2.2.1/xmlsec-2.2.1.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/com/fasterxml/woodstox/woodstox-core/5.2.1/woodstox-core-5.2.1.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/codehaus/woodstox/stax2-api/4.2/stax2-api-4.2.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/jakarta/xml/bind/jakarta.xml.bind-api/2.3.2/jakarta.xml.bind-api-2.3.2.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/jakarta/activation/jakarta.activation-api/1.2.1/jakarta.activation-api-1.2.1.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/apache/xmlgraphics/batik-all/1.13/batik-all-1.13.jar"/>
