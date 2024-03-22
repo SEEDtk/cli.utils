@@ -27,10 +27,11 @@ import org.theseed.cli.AnnoService;
 import org.theseed.cli.DirEntry;
 import org.theseed.cli.DirTask;
 import org.theseed.cli.StatusTask;
-import org.theseed.counters.Shuffler;
 import org.theseed.dl4j.eval.BinEvalProcessor;
 import org.theseed.genome.Genome;
 import org.theseed.reports.Html;
+import org.theseed.stats.Shuffler;
+
 import com.github.cliftonlabs.json_simple.JsonException;
 
 /**
