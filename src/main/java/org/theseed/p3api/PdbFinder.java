@@ -42,7 +42,7 @@ public class PdbFinder {
     /** throttle pause, in milliseconds (0 for none) */
     private int throttlePause;
     /** URL for PDB search API */
-    private static final String PDB_SEARCH_URL = "https://search.rcsb.org/rcsbsearch/v1/query";
+    private static final String PDB_SEARCH_URL = "https://search.rcsb.org/rcsbsearch/v2/query";
     /** maximum retries */
     private static final int MAX_TRIES = 3;
 

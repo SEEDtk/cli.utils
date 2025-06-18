@@ -68,7 +68,6 @@
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/nd4j/nd4j-native-api/1.0.0-M2.1/nd4j-native-api-1.0.0-M2.1.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/nd4j/nd4j-native-preset/1.0.0-M2.1/nd4j-native-preset-1.0.0-M2.1.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/nd4j/nd4j-presets-common/1.0.0-M2.1/nd4j-presets-common-1.0.0-M2.1.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/nd4j/nd4j-native-preset/1.0.0-M2.1/nd4j-native-preset-1.0.0-M2.1-macosx-x86_64.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/openblas/0.3.19-1.5.7/openblas-0.3.19-1.5.7.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/openblas/0.3.19-1.5.7/openblas-0.3.19-1.5.7-macosx-x86_64.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/bytedeco/javacpp/1.5.7/javacpp-1.5.7-macosx-x86_64.jar"/>

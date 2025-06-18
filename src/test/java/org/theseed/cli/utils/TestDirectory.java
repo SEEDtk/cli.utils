@@ -67,7 +67,7 @@ public class TestDirectory {
     public void testDirTask() {
         DirTask dirTask = new DirTask(new File("data"), "rastuser25@patricbrc.org");
         List<DirEntry> dirList = dirTask.list("/rastuser25@patricbrc.org/Binning.Webinar");
-        assertThat(dirList.size(), equalTo(8));
+        assertThat(dirList.size(), equalTo(10));
         for (DirEntry entry : dirList) {
             switch (entry.getName()) {
             case "Big" :
@@ -75,6 +75,9 @@ public class TestDirectory {
                 break;
             case "Medium" :
                 assertThat(entry.getType(), equalTo(DirEntry.Type.FOLDER));
+                break;
+            case "Metagenomic Binning BV-BRC.pptx" :
+                assertThat(entry.getType(), equalTo(DirEntry.Type.OTHER));
                 break;
             case "SRS014683.fa" :
                 assertThat(entry.getType(), equalTo(DirEntry.Type.CONTIGS));
@@ -93,6 +96,9 @@ public class TestDirectory {
                 break;
             case "contigs.fasta" :
                 assertThat(entry.getType(), equalTo(DirEntry.Type.CONTIGS));
+                break;
+            case "The BV-BRC Command-Line Interface.pptx" :
+                assertThat(entry.getType(), equalTo(DirEntry.Type.OTHER));
                 break;
             default :
                 fail("Invalid directory entry " + entry.getName());
