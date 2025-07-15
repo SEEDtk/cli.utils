@@ -148,7 +148,7 @@ public class QzaReportProcessor extends BaseProcessor {
     }
 
     @Override
-    protected boolean validateParms() throws IOException, ParseFailureException {
+    protected void validateParms() throws IOException, ParseFailureException {
         // Insure the input directory exists.
         if (! this.inDir.isDirectory())
             throw new FileNotFoundException("Input " + this.inDir + " is not found or invalid.");
@@ -184,7 +184,6 @@ public class QzaReportProcessor extends BaseProcessor {
         log.info("Reading SSU rRNA sequences from {}.", this.repGenFile);
         this.repgens = new GenomeDescriptorSet(this.repGenFile);
         log.info("{} representative genomes found.", this.repgens.size());
-        return true;
     }
 
     @Override

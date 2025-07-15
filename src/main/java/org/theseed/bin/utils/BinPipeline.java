@@ -326,9 +326,7 @@ public class BinPipeline {
         String[] parmArgs = genParms.stream().toArray(String[]::new);
         // Call the generator.
         BinProcessor processor = new BinProcessor();
-        boolean ok = processor.parseCommand(parmArgs);
-        if (! ok)
-            throw new RuntimeException("Command-line parse error in bins.generate.");
+        processor.parseCommand(parmArgs);
         processor.run();
     }
 

@@ -118,7 +118,7 @@ public class GtoRolesProcessor extends BaseProcessor {
     }
 
     @Override
-    protected boolean validateParms() throws IOException, ParseFailureException {
+    protected void validateParms() throws IOException, ParseFailureException {
         // Validate the numeric parameters.
         if (this.batchSize < 1)
             throw new ParseFailureException("Invalid batch size.  Minimum is 1.");
@@ -171,7 +171,6 @@ public class GtoRolesProcessor extends BaseProcessor {
         this.roleBatch = new HashMap<String, GtoRoleData>((this.batchSize * 4 + 2) / 3);
         // Create the PDB output file.
         this.pdbWriter = new PrintWriter(new File(this.outDir, "pdbList.txt"));
-        return true;
     }
 
     @Override

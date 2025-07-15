@@ -82,7 +82,7 @@ public abstract class BaseBinReportsProcessor extends BaseProcessor {
     protected abstract void setBinReportDefaults();
 
     @Override
-    protected final boolean validateParms() throws IOException, ParseFailureException {
+    protected final void validateParms() throws IOException, ParseFailureException {
         // Insure the file/label parameters are properly paired.
         final int pairParmCount = this.specs.size();
         if (pairParmCount % 2 != 0)
@@ -111,7 +111,6 @@ public abstract class BaseBinReportsProcessor extends BaseProcessor {
         }
         // Finally, validate the subclass options.
         this.validateBinReportParms();
-        return true;
     }
 
     /**

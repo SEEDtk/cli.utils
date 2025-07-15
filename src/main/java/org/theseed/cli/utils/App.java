@@ -62,9 +62,7 @@ public class App
             throw new RuntimeException("Invalid command " + command);
         }
         // Process it.
-        boolean ok = processor.parseCommand(newArgs);
-        if (ok) {
-            processor.run();
-        }
+        processor.parseCommand(newArgs);
+        processor.run();
     }
 }

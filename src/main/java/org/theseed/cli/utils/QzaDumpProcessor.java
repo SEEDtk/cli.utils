@@ -82,7 +82,7 @@ public class QzaDumpProcessor extends BaseProcessor {
     }
 
     @Override
-    protected boolean validateParms() throws IOException, ParseFailureException {
+    protected void validateParms() throws IOException, ParseFailureException {
         // Verify the numbers.
         if (this.phredOffset < 32 || this.phredOffset > 127)
             throw new ParseFailureException("Invalid phred offset.  Must be between 32 and 127.");
@@ -103,7 +103,6 @@ public class QzaDumpProcessor extends BaseProcessor {
             FileUtils.cleanDirectory(this.outDir);
         } else
             log.info("Output will be to directory {}.", this.outDir);
-        return true;
     }
 
     @Override

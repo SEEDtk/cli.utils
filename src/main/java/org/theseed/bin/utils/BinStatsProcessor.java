@@ -121,7 +121,7 @@ public class BinStatsProcessor extends BaseProcessor implements BinReporter.IPar
     }
 
     @Override
-    protected boolean validateParms() throws IOException, ParseFailureException {
+    protected void validateParms() throws IOException, ParseFailureException {
         if (! this.workDir.isDirectory()) {
             log.info("Creating working directory {}.", this.workDir);
             FileUtils.forceMkdir(this.workDir);
@@ -144,7 +144,6 @@ public class BinStatsProcessor extends BaseProcessor implements BinReporter.IPar
             this.jobSet = TabbedLineReader.readSet(this.filterFile, "1");
             log.info("{} jobs found in filter file {}.", this.jobSet.size(), this.filterFile);
         }
-        return true;
     }
 
     @Override

@@ -121,7 +121,7 @@ public class RoleTableProcessor extends BaseProcessor implements PegReporter.IPa
     }
 
     @Override
-    protected boolean validateParms() throws IOException, ParseFailureException {
+    protected void validateParms() throws IOException, ParseFailureException {
         // If no reports are specified, default to DNA.
         if (this.outFormats.size() == 0)
             this.outFormats.add(PegReporter.Type.DNA);
@@ -155,7 +155,6 @@ public class RoleTableProcessor extends BaseProcessor implements PegReporter.IPa
             // No pre-existing map.  Set the starting function number to 1000;
             this.nextFunNum = 1000;
         }
-        return true;
     }
 
     /**

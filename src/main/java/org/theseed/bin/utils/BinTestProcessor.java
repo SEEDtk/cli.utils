@@ -171,7 +171,7 @@ public class BinTestProcessor extends BaseProcessor {
     }
 
     @Override
-    protected boolean validateParms() throws IOException, ParseFailureException {
+    protected void validateParms() throws IOException, ParseFailureException {
         // Insure we have a binning path and a model directory.
         BinPipeline.setBinPath(this.binPath);
         log.info("Binning command path is {}.", this.binPath);
@@ -221,7 +221,6 @@ public class BinTestProcessor extends BaseProcessor {
                 log.info("{} files and subdirectories deleted from {}.", count, sample);
             }
         }
-        return true;
     }
 
     /**
