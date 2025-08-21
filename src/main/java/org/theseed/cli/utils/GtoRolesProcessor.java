@@ -55,7 +55,7 @@ public class GtoRolesProcessor extends BaseProcessor {
 
     // FIELDS
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(GtoRolesProcessor.class);
+    private static final Logger log = LoggerFactory.getLogger(GtoRolesProcessor.class);
     /** role definitions */
     private RoleMap roleDefinitions;
     /** input genome source */

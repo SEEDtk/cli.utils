@@ -64,7 +64,7 @@ public class BinStatsProcessor extends BaseProcessor implements BinReporter.IPar
 
     // FIELDS
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(BinStatsProcessor.class);
+    private static final Logger log = LoggerFactory.getLogger(BinStatsProcessor.class);
     /** output stream */
     private OutputStream outStream;
     /** set of job IDs to use, or NULL to use all */

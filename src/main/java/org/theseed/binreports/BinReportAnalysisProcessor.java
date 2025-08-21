@@ -52,7 +52,7 @@ public class BinReportAnalysisProcessor extends BaseBinReportsProcessor implemen
 
     // FIELDS
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(BinReportAnalysisProcessor.class);
+    private static final Logger log = LoggerFactory.getLogger(BinReportAnalysisProcessor.class);
     /** report writer */
     private BinReportReporter reportWriter;
     /** output file name (if any) */

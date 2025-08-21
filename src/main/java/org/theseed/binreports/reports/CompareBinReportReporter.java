@@ -10,6 +10,8 @@ import java.util.TreeMap;
 import java.util.stream.IntStream;
 
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.theseed.binreports.BinReport;
 import org.theseed.binreports.BinReport.Sample;
 
@@ -30,6 +32,8 @@ import org.theseed.binreports.BinReport.Sample;
 public class CompareBinReportReporter extends BinReportReporter {
 
     // FIELDS
+    /** logging facility */
+    private static final Logger log = LoggerFactory.getLogger(CompareBinReportReporter.class);
     /** map of labels to statistics arrays */
     private Map<String, DescriptiveStatistics[]> statsMap;
     /** output file name */
@@ -62,7 +66,7 @@ public class CompareBinReportReporter extends BinReportReporter {
         // Get the list of labels and the size of the scoring array and create the stats map.
         var labels = this.getLabels();
         var width = binReport.width();
-        this.statsMap = new TreeMap<String, DescriptiveStatistics[]>();
+        this.statsMap = new TreeMap<>();
         for (String label : labels) {
             var statsArray = new DescriptiveStatistics[width];
             IntStream.range(0, width).forEach(i -> statsArray[i] = new DescriptiveStatistics());

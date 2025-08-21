@@ -76,7 +76,7 @@ public class BinTestProcessor extends BaseProcessor {
 
     // FIELDS
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(BinTestProcessor.class);
+    private static final Logger log = LoggerFactory.getLogger(BinTestProcessor.class);
     /** list of directories containing binning requests */
     private File[] samples;
     /** optional binning parameter overrides */

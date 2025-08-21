@@ -6,8 +6,6 @@ package org.theseed.dl4j.utils;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * This is the base class for creating a classification directory.
@@ -18,10 +16,8 @@ import org.slf4j.LoggerFactory;
 public abstract class XMatrixDir {
 
     // FIELDS
-    /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(XMatrixDir.class);
     /** output directory name */
-    private File outDir;
+    private final File outDir;
     /** recommended output format */
     private String doubleFormat = "%6.1f";
 

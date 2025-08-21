@@ -51,7 +51,7 @@ public abstract class BaseBinReportsProcessor extends BaseProcessor {
 
     // FIELDS
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(BaseBinReportsProcessor.class);
+    private static final Logger log = LoggerFactory.getLogger(BaseBinReportsProcessor.class);
     /** set of feature IDs */
     private SortedMap<String, String> featureMap;
     /** bin report data object */

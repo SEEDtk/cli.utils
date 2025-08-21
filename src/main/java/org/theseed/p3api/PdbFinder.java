@@ -34,7 +34,7 @@ public class PdbFinder {
 
     // FIELDS
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(PdbFinder.class);
+    private static final Logger log = LoggerFactory.getLogger(PdbFinder.class);
     /** e-value cutoff */
     private double maxEValue;
     /** minimum fraction identity */

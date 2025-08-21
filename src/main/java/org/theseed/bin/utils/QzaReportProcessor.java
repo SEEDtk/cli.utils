@@ -56,7 +56,7 @@ public class QzaReportProcessor extends BaseProcessor {
 
     // FIELDS
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(QzaReportProcessor.class);
+    private static final Logger log = LoggerFactory.getLogger(QzaReportProcessor.class);
     /** input sample group */
     private FastqSampleGroup inputGroup;
     /** set of sample IDs */

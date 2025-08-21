@@ -40,7 +40,7 @@ public class XTotalProcessor extends BasePipeProcessor {
 
     // FIELDS
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(XTotalProcessor.class);
+    private static final Logger log = LoggerFactory.getLogger(XTotalProcessor.class);
     /** set of columns to skip */
     private Set<Integer> skipCols;
 

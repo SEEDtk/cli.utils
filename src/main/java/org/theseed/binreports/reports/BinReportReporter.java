@@ -30,7 +30,7 @@ public abstract class BinReportReporter {
 
     // FIELDS
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(BinReportReporter.class);
+    private static final Logger log = LoggerFactory.getLogger(BinReportReporter.class);
     /** scoring method type */
     private ScorePackaging.Type method;
     /** output directory name */

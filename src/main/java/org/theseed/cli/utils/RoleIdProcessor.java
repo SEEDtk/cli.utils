@@ -43,7 +43,7 @@ public class RoleIdProcessor extends BasePipeProcessor {
 
     // FIELDS
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(RoleIdProcessor.class);
+    private static final Logger log = LoggerFactory.getLogger(RoleIdProcessor.class);
     /** role definition map */
     private RoleMap roleMap;
     /** input column index */

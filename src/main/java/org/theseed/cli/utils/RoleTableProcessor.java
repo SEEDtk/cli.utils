@@ -59,7 +59,7 @@ public class RoleTableProcessor extends BaseProcessor implements PegReporter.IPa
 
     // FIELDS
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(RoleTableProcessor.class);
+    private static final Logger log = LoggerFactory.getLogger(RoleTableProcessor.class);
     /** list of output reporters */
     private List<PegReporter> reporters;
     /** map of function IDs to names */

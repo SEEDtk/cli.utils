@@ -53,7 +53,7 @@ public class BinPipeline {
 
     // FIELDS
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(BinPipeline.class);
+    private static final Logger log = LoggerFactory.getLogger(BinPipeline.class);
     /** sample directory name */
     private File sampleDir;
     /** binning parameter overrides */

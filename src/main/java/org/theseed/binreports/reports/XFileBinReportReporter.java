@@ -6,6 +6,8 @@ package org.theseed.binreports.reports;
 import java.io.IOException;
 import java.io.PrintWriter;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.theseed.binreports.BinReport;
 import org.theseed.binreports.BinReport.Sample;
 
@@ -17,12 +19,15 @@ import org.theseed.binreports.BinReport.Sample;
  */
 public class XFileBinReportReporter extends BinReportReporter {
 
+    // FIELDS
+    /** logging facility */
+    private static final Logger log = LoggerFactory.getLogger(XFileBinReportReporter.class);
     /** output writer for data file */
     private PrintWriter dataWriter;
     /** buffer for building output lines */
     private StringBuilder line;
     /** delimiter to use for the file (comma for CSV, tab for TBL) */
-    private char delim;
+    private final char delim;
     /** output file name to use */
     private String outFileName;
 

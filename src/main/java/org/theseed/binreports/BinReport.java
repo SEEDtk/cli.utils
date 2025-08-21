@@ -30,7 +30,7 @@ public class BinReport implements Iterable<BinReport.Sample> {
 
     // FIELDS
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(BinReport.class);
+    private static final Logger log = LoggerFactory.getLogger(BinReport.class);
     /** map of sample IDs to samples */
     private Map<String, Sample> sampleMap;
     /** map of feature IDs to feature indices */

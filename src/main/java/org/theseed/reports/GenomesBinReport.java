@@ -32,7 +32,7 @@ public class GenomesBinReport extends BinReporter {
 
     // FIELDS
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(GenomesBinReport.class);
+    private static final Logger log = LoggerFactory.getLogger(GenomesBinReport.class);
     /** sets of genomes in a two-element list:  0 = bad, 1 = good */
     private List<SortedSet<GenomeData>> typeGenomes;
     /** representative-genome database */
