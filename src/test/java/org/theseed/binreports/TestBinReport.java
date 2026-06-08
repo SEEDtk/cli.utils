@@ -3,16 +3,6 @@
  */
 package org.theseed.binreports;
 
-import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
-import org.apache.commons.math3.util.ResizableDoubleArray;
-import org.junit.jupiter.api.Test;
-import org.theseed.basic.ParseFailureException;
-import org.theseed.binreports.scores.ScorePackaging;
-import org.theseed.io.TabbedLineReader;
-
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.*;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
@@ -20,6 +10,20 @@ import java.util.OptionalDouble;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.IntStream;
+
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
+import org.apache.commons.math3.util.ResizableDoubleArray;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.closeTo;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.lessThan;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
+import org.junit.jupiter.api.Test;
+import org.theseed.basic.ParseFailureException;
+import org.theseed.binreports.scores.ScorePackaging;
+import org.theseed.io.TabbedLineReader;
 
 /**
  * @author Bruce Parrello
@@ -31,7 +35,7 @@ class TestBinReport {
     void testBinReportBuilder() throws IOException, ParseFailureException {
         File binFile = new File("data", "binReport.bin.tbl");
         File bin2File = new File("data", "binReport.bin2.tbl");
-        Set<String> feats = new TreeSet<String>(TabbedLineReader.readSet(binFile, "repgen_id"));
+        Set<String> feats = new TreeSet<>(TabbedLineReader.readSet(binFile, "repgen_id"));
         feats.addAll(TabbedLineReader.readSet(bin2File, "repgen_id"));
         int width = feats.size();
         BinReport report = new BinReport(feats);
@@ -46,7 +50,7 @@ class TestBinReport {
             double[] scores = sample.getScores();
             assertThat(sampleId, scores.length, equalTo(width));
             switch (sampleId) {
-            case "ERR1136887" :
+            case "ERR1136887" -> {
                 assertThat(sample.getLabel(), equalTo("control"));
                 idx = report.getFeatureIdx("1776382.82");
                 assertThat(scores[idx], equalTo(0.0));
@@ -56,8 +60,8 @@ class TestBinReport {
                 assertThat(scores[idx], closeTo(384961.807, 0.001));
                 idx = report.getFeatureIdx("2831966.3");
                 assertThat(scores[idx], closeTo(226754.426, 0.001));
-                break;
-            case "GPSample" :
+                }
+            case "GPSample" -> {
                 assertThat(sample.getLabel(), equalTo("control"));
                 idx = report.getFeatureIdx("1776382.82");
                 assertThat(scores[idx], closeTo(134604.244, 0.001));
@@ -67,8 +71,8 @@ class TestBinReport {
                 assertThat(scores[idx], closeTo(2311314.032, 0.001));
                 idx = report.getFeatureIdx("2831966.3");
                 assertThat(scores[idx], equalTo(0.0));
-                break;
-            case "ROSample" :
+                }
+            case "ROSample" -> {
                 assertThat(sample.getLabel(), equalTo("parkinsons"));
                 idx = report.getFeatureIdx("1776382.82");
                 assertThat(scores[idx], closeTo(168751.238, 0.001));
@@ -78,9 +82,8 @@ class TestBinReport {
                 assertThat(scores[idx], equalTo(0.0));
                 idx = report.getFeatureIdx("97138.3");
                 assertThat(scores[idx], closeTo(35454.394, 0.001));
-                break;
-            default :
-                assertThat(sampleId, false);
+                }
+            default -> assertThat(sampleId, false);
             }
             assertThat(report.getLabels(), containsInAnyOrder("control", "parkinsons"));
             var controls = report.getSamplesForLabel("control");
@@ -95,7 +98,7 @@ class TestBinReport {
     void testScorePackaging() throws IOException, ParseFailureException {
         File binFile = new File("data", "binReport.bin.tbl");
         File bin2File = new File("data", "binReport.bin2.tbl");
-        Set<String> feats = new TreeSet<String>(TabbedLineReader.readSet(binFile, "repgen_id"));
+        Set<String> feats = new TreeSet<>(TabbedLineReader.readSet(binFile, "repgen_id"));
         feats.addAll(TabbedLineReader.readSet(bin2File, "repgen_id"));
         BinReport report = new BinReport(feats);
         report.processFile("control", binFile);

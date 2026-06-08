@@ -3,22 +3,21 @@
  */
 package org.theseed.cli.utils;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.*;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.equalTo;
+import static org.junit.jupiter.api.Assertions.fail;
+import org.junit.jupiter.api.Test;
 import org.theseed.cli.CopyTask;
 import org.theseed.cli.DirEntry;
 import org.theseed.cli.DirTask;
 import org.theseed.io.LineReader;
-
-import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * @author Bruce Parrello
@@ -70,38 +69,17 @@ public class TestDirectory {
         assertThat(dirList.size(), equalTo(10));
         for (DirEntry entry : dirList) {
             switch (entry.getName()) {
-            case "Big" :
-                assertThat(entry.getType(), equalTo(DirEntry.Type.FOLDER));
-                break;
-            case "Medium" :
-                assertThat(entry.getType(), equalTo(DirEntry.Type.FOLDER));
-                break;
-            case "Metagenomic Binning BV-BRC.pptx" :
-                assertThat(entry.getType(), equalTo(DirEntry.Type.OTHER));
-                break;
-            case "SRS014683.fa" :
-                assertThat(entry.getType(), equalTo(DirEntry.Type.CONTIGS));
-                break;
-            case "SRS014683.scaffolds.fa" :
-                assertThat(entry.getType(), equalTo(DirEntry.Type.CONTIGS));
-                break;
-            case "SRS014683_extract.1.fq" :
-                assertThat(entry.getType(), equalTo(DirEntry.Type.READS));
-                break;
-            case "SRS014683_extract.2.fq" :
-                assertThat(entry.getType(), equalTo(DirEntry.Type.READS));
-                break;
-            case "Small" :
-                assertThat(entry.getType(), equalTo(DirEntry.Type.FOLDER));
-                break;
-            case "contigs.fasta" :
-                assertThat(entry.getType(), equalTo(DirEntry.Type.CONTIGS));
-                break;
-            case "The BV-BRC Command-Line Interface.pptx" :
-                assertThat(entry.getType(), equalTo(DirEntry.Type.OTHER));
-                break;
-            default :
-                fail("Invalid directory entry " + entry.getName());
+            case "Big" -> assertThat(entry.getType(), equalTo(DirEntry.Type.FOLDER));
+            case "Medium" -> assertThat(entry.getType(), equalTo(DirEntry.Type.FOLDER));
+            case "Metagenomic Binning BV-BRC.pptx" -> assertThat(entry.getType(), equalTo(DirEntry.Type.OTHER));
+            case "SRS014683.fa" -> assertThat(entry.getType(), equalTo(DirEntry.Type.CONTIGS));
+            case "SRS014683.scaffolds.fa" -> assertThat(entry.getType(), equalTo(DirEntry.Type.CONTIGS));
+            case "SRS014683_extract.1.fq" -> assertThat(entry.getType(), equalTo(DirEntry.Type.READS));
+            case "SRS014683_extract.2.fq" -> assertThat(entry.getType(), equalTo(DirEntry.Type.READS));
+            case "Small" -> assertThat(entry.getType(), equalTo(DirEntry.Type.FOLDER));
+            case "contigs.fasta" -> assertThat(entry.getType(), equalTo(DirEntry.Type.CONTIGS));
+            case "The BV-BRC Command-Line Interface.pptx" -> assertThat(entry.getType(), equalTo(DirEntry.Type.OTHER));
+            default -> fail("Invalid directory entry " + entry.getName());
             }
         }
         dirList = dirTask.list("/rastuser25@patricbrc.org/Binning.Webinar/Medium");

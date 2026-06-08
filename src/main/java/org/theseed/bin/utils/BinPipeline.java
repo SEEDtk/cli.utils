@@ -79,11 +79,11 @@ public class BinPipeline {
     private class AnnoController {
 
         /** annotation service object for this bin */
-        private AnnoService annotation;
+        private final AnnoService annotation;
         /** GTO file for this bin */
-        private File gtoFile;
+        private final File gtoFile;
         /** original binning object */
-        private Bin bin;
+        private final Bin bin;
 
         /**
          * Construct an annotation controller for a bin.
@@ -355,7 +355,7 @@ public class BinPipeline {
                 FileUtils.forceMkdir(tempDir);
             // Now we annotate the bins that haven't been annotated yet.  We need a map from task IDs to bin object
             // annotation controllers.
-            Map<String, AnnoController> taskMap = new HashMap<String, AnnoController>(bins.size() * 4 / 3 + 1);
+            Map<String, AnnoController> taskMap = new HashMap<>(bins.size() * 4 / 3 + 1);
             // Create the annotation tasks.
             List<AnnoController> annotations = bins.stream().map(x -> new AnnoController(x))
                     .filter(x -> x.needsAnnotation()).collect(Collectors.toList());
@@ -374,28 +374,26 @@ public class BinPipeline {
                     Thread.sleep(10000);
                 } catch (InterruptedException e) { }
                 var statusUpdates = status.getStatus(taskMap.keySet());
-                var iter = statusUpdates.entrySet().iterator();
-                while (iter.hasNext()) {
-                    var statusEntry = iter.next();
+                for (var statusEntry : statusUpdates.entrySet()) {
                     String taskId = statusEntry.getKey();
                     AnnoController statusAnno = taskMap.get(taskId);
                     log.debug("Task {} has status {}, producing file {}.", taskId, statusEntry.getValue(),
                             statusAnno.getGtoFile());
                     switch (statusEntry.getValue()) {
-                    case StatusTask.FAILED :
+                    case StatusTask.FAILED -> {
                         // Here the annotation failed.  Log an error for later and remove the task.
                         log.error("Failed to annotate bin \"{}\" for sample {}.  Retry later.", statusAnno.getName(), this.sampleDir);
                         retVal = false;
                         taskMap.remove(taskId);
-                        break;
-                    case StatusTask.COMPLETED :
+                        }
+                    case StatusTask.COMPLETED -> {
                         // Here the annotation is done! log success and remove the task.
                         File gtoFile = statusAnno.getResultFile();
                         Genome genome = new Genome(gtoFile);
                         log.info("Genome {} created in file {} (check = {}).", genome, gtoFile, statusAnno.isAnnotated());
                         taskMap.remove(taskId);
                         annoCount++;
-                        break;
+                        }
                     }
                 }
             }
@@ -492,7 +490,7 @@ public class BinPipeline {
                 throw new RuntimeException("Exit code " + Integer.toString(exitCode) + " from " + scriptName.getName() + ".");
             // Denote we've succeeded.
             retVal = true;
-        } catch (Exception e) {
+        } catch (IOException | InterruptedException | RuntimeException e) {
             log.error("Exception running script: " + e.toString());
         }
         return retVal;
