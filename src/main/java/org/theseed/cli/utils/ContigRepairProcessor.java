@@ -43,7 +43,7 @@ import com.github.cliftonlabs.json_simple.JsonObject;
  * 
  * -h       display command-line usage
  * -v       display more detailed progress messages
- * -b       number of genomes to process in each batch (default 100)
+ * -b       number of genomes to process in each batch (default 10)
  * 
  * --genomes    if specified, a file containing a list of genome IDs to process. If the file does not exist, it will be created, and
  *              all the genomes from the database will be written to it. This saves us from having to read the entire genome table
@@ -73,7 +73,7 @@ public class ContigRepairProcessor extends BaseProcessor {
     private File genomeCacheFile;
 
     /** number of genomes to process in each query batch */
-    @Option(name = "-b", aliases = { "--batchSize", "--batch" }, metaVar = "50", usage = "number of genomes to process in each query batch")
+    @Option(name = "-b", aliases = { "--batchSize", "--batch" }, metaVar = "1", usage = "number of genomes to process in each query batch")
     private int batchSize;
 
     /** checkpoint file for genome IDs */
@@ -86,7 +86,7 @@ public class ContigRepairProcessor extends BaseProcessor {
 
     @Override
     protected void setDefaults() {
-        this.batchSize = 100;
+        this.batchSize = 10;
         this.genomeCacheFile = null;
     }
 
@@ -97,15 +97,15 @@ public class ContigRepairProcessor extends BaseProcessor {
         // Verify that the batch size is positive.
         if (this.batchSize <= 0)
             throw new ParseFailureException("Batch size must be at least 1.");
+        if (this.batchSize > 10)
+            log.warn("WARNING: large batch sizes can cause timeout errors.");
         // Check for a genome cache file. If there is no file specified, we will read the genome IDs from the database
         // without any flourish. If there is a file specified, we will read the genome IDs from it if it exists, or create it
         // and save the genome list to it if it does not.
         if (this.genomeCacheFile == null)
             this.readGenomesFromCache = false;
-        else if (! this.genomeCacheFile.exists())
-            this.readGenomesFromCache = false;
-        else
-            this.readGenomesFromCache = true;
+        else 
+            this.readGenomesFromCache = this.genomeCacheFile.exists();
         // If the checkpoint file exists, we are resuming a previous run, so the MD5 output file must also exist.
         if (this.checkpointFile.exists()) {
             log.info("Resuming previous run using checkpoint file {}.", this.checkpointFile);
